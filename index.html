@@ -185,7 +185,7 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
     </div>
     <div class="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg>
-      <input id="q" type="search" placeholder="Club name from the lobby" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+      <input id="q" type="search" placeholder="Club name or gamertag" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
     </div>
     <div id="verdict" class="verdict" aria-live="polite"></div>
   </section>
@@ -210,38 +210,21 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
         <input id="fDate" type="date">
       </div>
       <div class="field">
-        <label for="fScore">Final score <span class="req">us–them</span></label>
-        <input id="fScore" placeholder="1-4" maxlength="12" inputmode="numeric">
-      </div>
-      <div class="field">
-        <label for="fPlatform">Platform</label>
-        <select id="fPlatform">
-          <option value="">Not sure</option>
-          <option>PlayStation</option>
-          <option>Xbox</option>
-          <option>PC</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="fAka">Other club names</label>
+        <label for="fAka">Other club names <span class="req">optional</span></label>
         <input id="fAka" placeholder="If they renamed" maxlength="200" autocomplete="off">
       </div>
     </div>
     <div class="field">
-      <label for="fPlayers">Gamertags</label>
+      <label for="fPlayers">Gamertags <span class="req">optional</span></label>
       <input id="fPlayers" placeholder="Separate with commas" maxlength="300" autocomplete="off" spellcheck="false">
     </div>
     <div class="field">
-      <label for="fNotes">Notes</label>
+      <label for="fNotes">Notes <span class="req">optional</span></label>
       <textarea id="fNotes" rows="3" maxlength="2000" placeholder="What happened? e.g. their players had max speed all game"></textarea>
     </div>
     <div class="field">
-      <label for="fShots">Screenshots <span class="req">up to 6</span></label>
+      <label for="fShots">Screenshots <span class="req">optional, up to 6</span></label>
       <input id="fShots" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple>
-    </div>
-    <div class="field">
-      <label for="fReporter">Your name <span class="req">optional, shown on the report</span></label>
-      <input id="fReporter" maxlength="40" autocomplete="nickname" spellcheck="false">
     </div>
     <div class="trap" aria-hidden="true"><label for="fWebsite">Leave this empty</label><input id="fWebsite" tabindex="-1" autocomplete="off"></div>
     <p id="formError" class="error" role="alert" hidden></p>
@@ -299,18 +282,22 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
   function score(q, c) {
     const qk = key(q), ck = key(c);
     if (!qk || !ck) return [0, ""];
-    if (qk === ck) return [1, "Exact name"];
+    if (qk === ck) return [1, "exact"];
     const ql = loose(q), cl = loose(c);
-    if (ql === cl) return [0.95, "Lookalike spelling"];
+    if (ql === cl) return [0.95, "lookalike"];
     const [short, long] = ql.length <= cl.length ? [ql, cl] : [cl, ql];
     const sim = 1 - lev(ql, cl) / Math.max(ql.length, cl.length);
     if (short.length >= 4 && long.includes(short)) {
       const contains = 0.7 + 0.15 * short.length / long.length;
-      return sim >= contains ? [sim, "Similar name"] : [contains, "Name contains it"];
+      return sim >= contains ? [sim, "similar"] : [contains, "contains"];
     }
     if (short.length <= 4) return [0, ""];
-    return [sim, "Similar name"];
+    return [sim, "similar"];
   }
+  const WHY = {
+    club: { exact: "Exact name", lookalike: "Lookalike spelling", similar: "Similar name", contains: "Name contains it", partial: "Partial name" },
+    player: { exact: "Gamertag", lookalike: "Lookalike gamertag", similar: "Similar gamertag", contains: "Gamertag contains it", partial: "Partial gamertag" },
+  };
 
   // ---- data shaping
   const when = (r) => r.match_date || String(r.created_at || "").slice(0, 10);
@@ -336,21 +323,24 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
       for (const r of rs) for (const n of [r.team, ...list(r.aka)]) if (n && !names.some((x) => key(x) === key(n))) names.push(n);
       const cheats = new Map();
       for (const r of rs) for (const c of list(r.cheats)) cheats.set(c, (cheats.get(c) || 0) + 1);
-      groups.push({ id, name: rs[0].team, names, reports: rs, cheats: [...cheats].sort((a, b) => b[1] - a[1]), last: when(rs[0]) });
+      const players = [...new Set(rs.flatMap((r) => list(r.players)))];
+      groups.push({ id, name: rs[0].team, names, players, reports: rs, cheats: [...cheats].sort((a, b) => b[1] - a[1]), last: when(rs[0]) });
     }
     return groups.sort((a, b) => b.last.localeCompare(a.last));
   }
-  function search(q) {
+  // Matches club names (and gamertags unless clubsOnly); club names win ties.
+  function search(q, clubsOnly = false) {
     const ql = loose(q);
     if (key(q).length < 2) return null;
     const hits = [];
     for (const g of state.groups) {
-      let best = { s: 0, why: "", via: "" };
-      for (const n of g.names) {
-        let [s, why] = score(q, n);
+      let best = { s: 0, why: "", via: "", player: false };
+      const cands = [...g.names.map((n) => [n, false]), ...(clubsOnly ? [] : g.players.map((p) => [p, true]))];
+      for (const [n, player] of cands) {
+        let [s, kind] = score(q, n);
         const nl = loose(n);
-        if (s < POSSIBLE && ql.length >= 2 && nl.includes(ql)) { s = PARTIAL + 0.29 * ql.length / nl.length; why = "Partial name"; }
-        if (s > best.s) best = { s, why, via: n };
+        if (s < POSSIBLE && ql.length >= 2 && nl.includes(ql)) { s = PARTIAL + 0.29 * ql.length / nl.length; kind = "partial"; }
+        if (s > best.s) best = { s, why: WHY[player ? "player" : "club"][kind], via: n, player };
       }
       if (best.s >= PARTIAL) hits.push({ g, ...best });
     }
@@ -416,7 +406,6 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
   const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
   const todayISO = () => new Date().toLocaleDateString("en-CA");
   const splitList = (s) => [...new Set(String(s || "").split(",").map((x) => x.trim()).filter(Boolean))];
-  const store = { get(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 
   // ---- rendering
   function teamHTML(g, hit) {
@@ -480,7 +469,11 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
     const q = esc(state.q.trim());
     if (strong.length) {
       const n = strong.reduce((t, h) => t + h.g.reports.length, 0);
-      verdict.innerHTML = `<span class="pill pill-red">On the log</span><p>${plural(n, "report")} for “${esc(strong[0].g.name)}”${strong.length > 1 ? ` and ${strong.length - 1} more` : ""}. Open it below for the evidence.</p>`;
+      const top = strong[0];
+      const who = top.player ? `gamertag “${esc(top.via)}”, played for “${esc(top.g.name)}”` : `“${esc(top.g.name)}”`;
+      verdict.innerHTML = `<span class="pill pill-red">On the log</span><p>${plural(n, "report")} for ${who}${strong.length > 1 ? ` and ${strong.length - 1} more` : ""}. Open it below for the evidence.</p>`;
+    } else if (hits.length && hits[0].player) {
+      verdict.innerHTML = `<span class="pill pill-yellow">Close match</span><p>“${q}” isn't logged exactly, but it's close to gamertag “${esc(hits[0].via)}”, who played for “${esc(hits[0].g.name)}”.</p>`;
     } else if (hits.length) {
       verdict.innerHTML = `<span class="pill pill-yellow">Close match</span><p>“${q}” isn't logged by that exact name, but ${hits.length === 1 ? "this club is" : "these clubs are"} close. Could be a rename or a typo.</p>`;
     } else {
@@ -522,7 +515,6 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
 
   // ---- log form
   $("#fCheats").innerHTML = CHEATS.map((c, i) => `<label class="pick"><input type="checkbox" id="fCheat${i}" value="${esc(c)}"><span>${esc(c)}</span></label>`).join("");
-  $("#fReporter").value = store.get("cc-reporter");
   function openForm(team) {
     $("#logForm").hidden = false;
     if (!$("#fDate").value) $("#fDate").value = todayISO();
@@ -536,7 +528,7 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
   $("#closeLog").addEventListener("click", closeForm);
   function dupHint() {
     const el = $("#dupHint"), team = $("#fTeam").value;
-    const hits = state.loaded ? (search(team) || []).filter((h) => h.s >= POSSIBLE) : [];
+    const hits = state.loaded ? (search(team, true) || []).filter((h) => h.s >= POSSIBLE) : [];
     if (!hits.length) { el.hidden = true; return; }
     const h = hits[0], n = h.g.reports.length;
     el.innerHTML = h.s >= STRONG
@@ -556,8 +548,6 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
     if (!cheats.length) { formError("Pick at least one thing they did. Use Other and add notes if none fit."); return $("#fCheat0").focus(); }
     const files = [...$("#fShots").files];
     if (files.length > MAX_SHOTS) { formError(`Attach up to ${MAX_SHOTS} screenshots.`); return $("#fShots").focus(); }
-    const reporter = $("#fReporter").value.trim();
-    store.set("cc-reporter", reporter);
     const btn = $("#submitBtn");
     btn.disabled = true;
     try {
@@ -571,12 +561,10 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
         team, team_key: key(team),
         aka: splitList($("#fAka").value).filter((a) => key(a) && key(a) !== key(team)).slice(0, 10),
         cheats, players: splitList($("#fPlayers").value).slice(0, 20),
-        platform: $("#fPlatform").value, score: $("#fScore").value.trim(),
         match_date: $("#fDate").value || todayISO(), notes: $("#fNotes").value.trim(),
-        screenshots: shots, reporter, source: "page",
+        screenshots: shots, source: "page",
       });
       $("#logForm").reset();
-      $("#fReporter").value = reporter;
       $("#dupHint").hidden = true;
       $("#logForm").hidden = true;
       state.q = team; $("#q").value = team;

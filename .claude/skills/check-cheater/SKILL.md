@@ -1,6 +1,6 @@
 ---
 name: check-cheater
-description: Check whether an FC 27 Pro Clubs club is on the squad's shared cheater registry (Club Checker), from a typed club name or a screenshot (pre-match lobby, opponent card, full-time result, club search, league table). Use this whenever the user asks if a club cheats, is on the list, has been logged or reported before, "have we played these guys", "are they legit", "check this team", or shares an FC / EA FC / FIFA Clubs screenshot and wants to know who they're up against, even if they never say "check" or "registry". Also use it to list or summarise everyone on the list.
+description: Check whether an FC 27 Pro Clubs club or player gamertag is on the squad's shared cheater registry (Club Checker), from a typed name or a screenshot (pre-match lobby, opponent card, full-time result, club search, league table). Use this whenever the user asks if a club cheats, is on the list, has been logged or reported before, "have we played these guys", "are they legit", "check this team", or shares an FC / EA FC / FIFA Clubs screenshot and wants to know who they're up against, even if they never say "check" or "registry". Also use it to list or summarise everyone on the list.
 ---
 
 # Check a club against the cheater registry
@@ -13,7 +13,7 @@ Everything runs from the ClubChecker project root (the folder with `config.json`
 
 ## 1. Get the club name(s)
 
-**Typed:** use the names as written. Several at once is fine.
+**Typed:** use the names as written. Several at once is fine. Gamertags work too: the matcher checks the players logged against each club as well as club names.
 
 **Screenshot** (pasted, a path, or "the latest screenshot", which means `python tools/registry.py latest-screenshot`): read every club name visible, exactly as written. Lobby and result screens show two clubs, one of them the user's; skip any name that loosely matches `ownClubs`. Search results and tables can show many clubs: check them all. If a character is ambiguous (O/0, I/l), go with your best reading, since the matcher treats lookalikes as equal.
 
@@ -33,7 +33,7 @@ The matcher ignores case, spacing, punctuation and accents, and treats lookalike
 - **POSSIBLE MATCH**: a similar name, or one name contained in the other. It could be a rename, a typo or an unrelated club, so present it as similar and never as a confirmed cheater.
 - **NO MATCH**: not on the list.
 
-It also notes when a name looks like one of the user's own clubs. If it can't reach the database, say so; the free Supabase project may be paused and can be restored from the Supabase dashboard.
+A gamertag hit is labelled `gamertag` (e.g. `MATCH (exact gamertag, 1.00) via "DevServ"`); report it as that player being logged with the club, e.g. "🟨 **DevServ** is on the list: played for **VIKINGS PARANÁ** (1 report, unknown hack)". It also notes when a name looks like one of the user's own clubs. If it can't reach the database, say so; the free Supabase project may be paused and can be restored from the Supabase dashboard.
 
 ## 3. Answer
 

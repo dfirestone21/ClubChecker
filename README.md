@@ -12,13 +12,13 @@ A shared cheater log for FC 27 Pro Clubs. Check any club before kick-off and log
 - **The data** lives in a free [Supabase](https://supabase.com) database (reports) and storage bucket (screenshots). Visitors can read and add reports but can't edit or delete them.
 - **Two Claude Code skills** use the same data:
   - **`register-cheater`** reads the club name, score and date from a screenshot (or takes a typed name), asks what the cheat was if you didn't say, and saves the report with the screenshot attached.
-  - **`check-cheater`** tells you whether a club is on the list, from a typed name or a lobby screenshot, along with what they did, how often and which players.
+  - **`check-cheater`** tells you whether a club or gamertag is on the list, from a typed name or a lobby screenshot, along with what they did, how often and which players.
 
 Matching is forgiving: it ignores caps, spaces and accents, treats lookalikes (0/O, 1/I/l, 5/S, ø/o) as the same letter, and links clubs that renamed through their old names.
 
 ## Using it
 
-**On the page:** type a club name to check it, or tap **Log a cheater**, fill in the club name and what they did, and attach a screenshot.
+**On the page:** type a club name or gamertag to check it, or tap **Log a cheater**, fill in the club name and what they did, and attach a screenshot.
 
 **In Claude Code:** clone this repo, open a session in the folder, then call a skill or just ask:
 

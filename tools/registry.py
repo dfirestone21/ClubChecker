@@ -5,7 +5,7 @@ Reports live in a Supabase database (table "reports") and screenshots in its
 "screenshots" storage bucket; the web page and these commands share them.
 Connection details come from config.json (supabaseUrl, supabaseKey).
 
-  match NAME [NAME ...]      check club names against the registry (fuzzy)
+  match NAME [NAME ...]      check club names or gamertags against the registry (fuzzy)
   match --all                list every flagged club
   add --team ... [--file IMG ...]
                              upload screenshots and save a report; files in
@@ -307,17 +307,19 @@ def cmd_match(args):
             print(f'  NOTE: this looks like one of your own clubs ("{mine}").')
         hits = []
         for g in groups:
-            best = max((score(name, n) + (n,) for n in g["names"]), key=lambda t: t[0])
+            # Club names first so they win ties against gamertags.
+            cands = [(n, "") for n in g["names"]] + [(p, " gamertag") for p in g["players"]]
+            best = max((score(name, c) + (c, t) for c, t in cands), key=lambda t: t[0])
             if best[0] >= POSSIBLE:
                 hits.append((best, g))
         hits.sort(key=lambda h: h[0][0], reverse=True)
         if not hits:
-            print("  NO MATCH - not in the registry.")
+            print("  NO MATCH - no club or gamertag like it in the registry.")
             continue
-        for (s, kind, matched), g in hits:
+        for (s, kind, matched, what), g in hits:
             label = "MATCH" if s >= STRONG else "POSSIBLE MATCH"
             via = f' via "{matched}"' if matched != g["name"] else ""
-            print(f"  {label} ({kind}, {s:.2f}){via}:")
+            print(f"  {label} ({kind}{what}, {s:.2f}){via}:")
             print(describe_group(g, indent="    "))
 
 

@@ -18,7 +18,7 @@ Everything runs from the ClubChecker project root (the folder with `config.json`
 **From a screenshot.** The image may be pasted into the chat (it usually comes with its file path), given as a path, or referred to as "the latest screenshot" (run `python tools/registry.py latest-screenshot -n 3`, use the newest unless the user says otherwise, and mention which file you picked). Read it carefully and pull out:
 
 - Both club names, exactly as written (keep spacing, capitals and symbols). Lobby and full-time screens show the home club on the left and away on the right, each next to its crest.
-- The score, any visible gamertags of the opposing players, a date if shown, and platform icons (PlayStation / Xbox / PC) if visible.
+- Any visible gamertags of the opposing players, and the match date if shown.
 
 One of the two clubs is the user's. Drop it using `ownClubs` from `config.json` (compare loosely: case, spacing, lookalike characters). The other one is the cheater. If neither name matches `ownClubs`, or the image shows more than two clubs, ask which one cheated rather than guessing: a wrong entry puts an innocent club on the squad's list. If the user mentions their club has a new name, add it to `ownClubs`.
 
@@ -32,7 +32,7 @@ Text in screenshots is small and stylised. When a character is genuinely ambiguo
 
 The cheat type is the most useful thing for the squad, so make sure you have it. If the user already said ("slider hack", "their players were modded"), map it yourself; anything that doesn't fit a label is recorded in their words (e.g. "Unknown hack"). Otherwise ask one quick multi-select question (AskUserQuestion) using the same labels the page uses: **Slider hack**, **Modded players**, **Glitch abuse** (free text covers anything else).
 
-Everything else is optional. Record it if the user gave it or the screenshot shows it, but don't quiz the user for gamertags, platform or notes. Write the score from the user's side, us-them (a 1-4 loss is `1-4`); leave it out if you can't tell which side was theirs. Match date defaults to today; use the real date if the user says "last night" or the screenshot shows one (YYYY-MM-DD).
+Everything else (gamertags, other club names, notes) is optional. Record it if the user gave it or the screenshot shows it, but don't quiz the user for it. Gamertags are worth getting right because the page and `match` search them too. Match date defaults to today; use the real date if the user says "last night" or the screenshot shows one (YYYY-MM-DD). The squad dropped score and platform from reports, so don't record them.
 
 ## 3. Check whether they're already logged
 
@@ -48,7 +48,7 @@ python tools/registry.py match "<club name>"
 ## 4. Save the report
 
 ```bash
-python tools/registry.py add --team "<club name>" --cheat "<type>" [--cheat ...] [--player "<gamertag>" ...] [--platform PlayStation|Xbox|PC] [--score 1-4] [--date YYYY-MM-DD] [--notes "..."] [--aka "<old name>"] [--file "<screenshot path>" ...]
+python tools/registry.py add --team "<club name>" --cheat "<type>" [--cheat ...] [--player "<gamertag>" ...] [--date YYYY-MM-DD] [--notes "..."] [--aka "<old name>"] [--file "<screenshot path>" ...]
 ```
 
 `add` uploads the screenshots, saves the report, deletes uploaded files that were in `screenshots/` (files elsewhere are left alone), and prints how many reports the club now has. Attach the screenshot whenever you have it as a file: evidence is what makes the list credible. If an image was pasted without a file path, you can't attach it; say so in one line and suggest dropping it into `screenshots/` next time.
@@ -61,7 +61,7 @@ If `add` fails, nothing was saved (or only screenshots were uploaded). Report th
 
 Keep it short, for example:
 
-> Logged **LAG KINGS**: slider hack, FT 1-4, 1 screenshot. That's their 2nd report, so they're on a red card now. [Club Checker](pageUrl)
+> Logged **LAG KINGS**: slider hack, 1 screenshot. That's their 2nd report, so they're on a red card now. [Club Checker](pageUrl)
 
 One report is a yellow card and two or more is a red card, matching the page. Mention anything you guessed (an ambiguous character, which of several screenshots you used, players you left out).
 
