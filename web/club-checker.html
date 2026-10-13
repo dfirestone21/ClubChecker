@@ -1,0 +1,602 @@
+<title>Club Checker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Saira+Condensed:wght@600;700;800&display=swap">
+<style>
+/* Layout: one phone-first column. The check bar sits on top (it gets used mid-lobby), the log form folds open beneath it, and the flagged-clubs ledger fills the rest. */
+:root {
+  --bg: #F2F5F2;
+  --surface: #FFFFFF;
+  --ink: #12201A;
+  --muted: #56675E;
+  --line: #D3DDD6;
+  --chip: #E6EDE8;
+  --pitch: #1B7547;
+  --yellow: #E8B51F;
+  --red: #CF2338;
+  --on-yellow: #241B00;
+  --on-red: #FFFFFF;
+  --on-ink: #FFFFFF;
+  --shadow: 0 1px 2px rgb(18 32 26 / .06), 0 10px 28px rgb(18 32 26 / .07);
+  --font-display: "Saira Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "Barlow", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1411; --surface: #151F1A; --ink: #E3EBE6; --muted: #93A49B; --line: #29372F; --chip: #1E2A24;
+    --pitch: #45C285; --yellow: #F0C33C; --red: #E5384D; --on-yellow: #241B00; --on-red: #FFFFFF; --on-ink: #0D1411;
+    --shadow: 0 1px 2px rgb(0 0 0 / .35), 0 10px 28px rgb(0 0 0 / .3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1411; --surface: #151F1A; --ink: #E3EBE6; --muted: #93A49B; --line: #29372F; --chip: #1E2A24;
+  --pitch: #45C285; --yellow: #F0C33C; --red: #E5384D; --on-yellow: #241B00; --on-red: #FFFFFF; --on-ink: #0D1411;
+  --shadow: 0 1px 2px rgb(0 0 0 / .35), 0 10px 28px rgb(0 0 0 / .3);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font: 400 16px/1.5 var(--font-body); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 28px; }
+h1, h2 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--pitch); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* header */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.mark { position: relative; width: 34px; height: 40px; flex: none; }
+.mark i { position: absolute; width: 22px; height: 30px; border-radius: 3px; }
+.mark i:first-child { left: 0; top: 6px; background: var(--yellow); transform: rotate(-12deg); }
+.mark i:last-child { left: 11px; top: 2px; background: var(--red); transform: rotate(8deg); }
+h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; letter-spacing: .01em; text-transform: uppercase; }
+.tally { font-family: var(--font-mono); font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.tally b { color: var(--ink); font-weight: 500; }
+
+/* check */
+.check { display: grid; gap: 10px; }
+.check-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.label { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; letter-spacing: .08em; text-transform: uppercase; }
+.search { position: relative; }
+.search svg { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; color: var(--muted); pointer-events: none; }
+#q { width: 100%; padding: 16px 16px 16px 48px; font-size: 1.15rem; font-weight: 500; background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+#q::placeholder { color: var(--muted); font-weight: 400; }
+#q:focus { outline: none; border-color: var(--pitch); }
+.verdict { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 28px; font-size: .98rem; }
+.verdict:empty { display: none; }
+.verdict p { min-width: 0; }
+
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-family: var(--font-display); font-weight: 700; font-size: .9rem; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.pill::before { content: ""; width: 9px; height: 12px; border-radius: 2px; background: currentColor; }
+.pill-clean { color: var(--pitch); background: color-mix(in srgb, var(--pitch) 14%, transparent); }
+.pill-clean::before { border-radius: 50%; width: 9px; height: 9px; }
+.pill-red { color: var(--red); background: color-mix(in srgb, var(--red) 13%, transparent); }
+.pill-yellow { color: var(--ink); background: color-mix(in srgb, var(--yellow) 30%, transparent); }
+.pill-yellow::before { background: var(--yellow); }
+
+/* buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 10px; padding: 9px 14px; font-weight: 600; cursor: pointer; border: 1.5px solid transparent; }
+.btn-primary { background: var(--ink); color: var(--on-ink); }
+.btn-primary:disabled { opacity: .6; cursor: progress; }
+.btn-ghost { background: transparent; border-color: var(--line); }
+.btn-ghost:hover { border-color: var(--ink); }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--pitch); font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.danger { color: var(--red); }
+
+/* log form */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 16px; box-shadow: var(--shadow); }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.panel h2 { font-size: 1.5rem; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
+.icon-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: transparent; font-size: 1.3rem; line-height: 1; cursor: pointer; }
+.field { display: grid; gap: 6px; min-width: 0; border: 0; padding: 0; margin: 0; }
+.field > label, .field > legend { font-weight: 600; font-size: .92rem; padding: 0; }
+.req { color: var(--muted); font-weight: 400; font-size: .82rem; }
+.field input:not([type=checkbox]):not([type=file]), .field select, .field textarea { width: 100%; padding: 10px 12px; background: var(--bg); border: 1.5px solid var(--line); border-radius: 9px; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--pitch); }
+.field textarea { resize: vertical; min-height: 76px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 16px; }
+.hint { font-size: .88rem; color: var(--muted); }
+.hint b { color: var(--ink); }
+.error { color: var(--red); font-weight: 500; }
+.picks { display: flex; flex-wrap: wrap; gap: 8px; }
+.pick { position: relative; }
+.pick input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.pick span { display: inline-block; padding: 7px 13px; border-radius: 999px; border: 1.5px solid var(--line); font-weight: 500; font-size: .93rem; }
+.pick input:checked + span { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+.pick input:focus-visible + span { outline: 2px solid var(--pitch); outline-offset: 2px; }
+.actions { display: flex; justify-content: flex-end; }
+.readonly { font-size: .9rem; color: var(--muted); }
+
+/* ledger */
+.ledger { display: grid; gap: 12px; }
+.ledger-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.ledger-head h2 { font-size: 1.05rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.legend { display: flex; align-items: center; gap: 6px; font-size: .82rem; color: var(--muted); }
+.legend i { display: inline-block; width: 9px; height: 12px; border-radius: 2px; margin-left: 6px; }
+.legend i.y { background: var(--yellow); }
+.legend i.r { background: var(--red); }
+.list { display: grid; gap: 10px; }
+.team { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.team-head { width: 100%; display: flex; align-items: center; gap: 16px; padding: 14px 16px; background: none; border: 0; text-align: left; cursor: pointer; }
+.team-head:hover .team-name { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.rcard { flex: none; width: 30px; height: 40px; border-radius: 4px; display: grid; place-items: center; font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; transform: rotate(-5deg); box-shadow: 0 1px 2px rgb(0 0 0 / .18); }
+.rcard.y { background: var(--yellow); color: var(--on-yellow); }
+.rcard.r { background: var(--red); color: var(--on-red); }
+.team-main { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.team-name { font-family: var(--font-display); font-weight: 700; font-size: 1.35rem; line-height: 1.1; overflow-wrap: anywhere; }
+.team-meta { font-size: .88rem; color: var(--muted); overflow-wrap: anywhere; }
+.why { font-family: var(--font-mono); font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font-size: .8rem; font-weight: 600; padding: 2px 9px; border-radius: 6px; background: var(--chip); }
+.chev { flex: none; width: 10px; height: 10px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg) translate(-2px, -2px); transition: transform .15s; }
+.team-head[aria-expanded="true"] .chev { transform: rotate(225deg) translate(-2px, -2px); }
+.team-body { border-top: 1px solid var(--line); }
+.reports { list-style: none; margin: 0; padding: 0; }
+.report { padding: 14px 16px 16px; display: grid; gap: 8px; }
+.report + .report { border-top: 1px dashed var(--line); }
+.report-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: .9rem; }
+.report-line time { font-weight: 500; }
+.ft { color: var(--muted); }
+.report p { font-size: .95rem; overflow-wrap: anywhere; }
+.k { color: var(--muted); font-size: .85rem; margin-right: 6px; }
+.notes { white-space: pre-wrap; }
+.shots { display: flex; flex-wrap: wrap; gap: 8px; }
+.shot { padding: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--chip); cursor: zoom-in; width: 132px; aspect-ratio: 16 / 9; max-width: 100%; }
+.shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.report-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: .84rem; color: var(--muted); }
+.confirm { display: inline-flex; align-items: center; gap: 12px; color: var(--ink); }
+.empty { padding: 28px 20px; border: 1.5px dashed var(--line); border-radius: 12px; display: grid; gap: 8px; justify-items: start; }
+.empty h3 { margin: 0; font-family: var(--font-display); font-size: 1.25rem; }
+.empty p { color: var(--muted); max-width: 52ch; }
+
+.foot { display: grid; gap: 6px; font-size: .85rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 18px; }
+.foot p { max-width: 65ch; }
+.foot q { color: var(--ink); }
+
+/* overlays */
+.lightbox { position: fixed; inset: 0; background: rgb(0 0 0 / .86); display: grid; place-items: center; padding: 24px 16px; z-index: 10; }
+.lightbox img { max-height: calc(100% - 56px); max-width: 100%; border-radius: 6px; }
+.lb-close { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: 16px; background: #FFFFFF; color: #12201A; border: 0; border-radius: 8px; padding: 8px 14px; font-weight: 600; cursor: pointer; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--on-ink); padding: 10px 16px; border-radius: 10px; font-weight: 500; box-shadow: var(--shadow); z-index: 11; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"><i></i><i></i></span>
+      <h1>Club Checker</h1>
+    </div>
+    <p class="tally" id="tally" aria-live="polite"></p>
+  </header>
+
+  <section class="check">
+    <div class="check-head">
+      <label class="label" for="q">Check a club</label>
+      <button id="openLog" class="btn btn-ghost" type="button" hidden>+ Log a cheater</button>
+    </div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg>
+      <input id="q" type="search" placeholder="Club name from the lobby" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+    </div>
+    <div id="verdict" class="verdict" aria-live="polite"></div>
+    <p id="readonly" class="readonly" hidden>You can check clubs here but not add them. Ask whoever shared this page to invite you as an Editor.</p>
+  </section>
+
+  <form id="logForm" class="panel" hidden novalidate>
+    <div class="panel-head">
+      <h2>Log a cheater</h2>
+      <button type="button" id="closeLog" class="icon-btn" aria-label="Close the form">&times;</button>
+    </div>
+    <div class="field">
+      <label for="fTeam">Club name <span class="req">as it appears in game</span></label>
+      <input id="fTeam" maxlength="60" autocomplete="off" spellcheck="false">
+      <p id="dupHint" class="hint" hidden></p>
+    </div>
+    <fieldset class="field">
+      <legend>What did they do?</legend>
+      <div class="picks" id="fCheats"></div>
+    </fieldset>
+    <div class="grid2">
+      <div class="field">
+        <label for="fDate">Match date</label>
+        <input id="fDate" type="date">
+      </div>
+      <div class="field">
+        <label for="fScore">Final score <span class="req">us–them</span></label>
+        <input id="fScore" placeholder="1-4" maxlength="12" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label for="fPlatform">Platform</label>
+        <select id="fPlatform">
+          <option value="">Not sure</option>
+          <option>PlayStation</option>
+          <option>Xbox</option>
+          <option>PC</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fAka">Other club names</label>
+        <input id="fAka" placeholder="If they renamed" autocomplete="off">
+      </div>
+    </div>
+    <div class="field">
+      <label for="fPlayers">Gamertags</label>
+      <input id="fPlayers" placeholder="Separate with commas" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label for="fNotes">Notes</label>
+      <textarea id="fNotes" rows="3" placeholder="What happened? e.g. ball froze every time we attacked"></textarea>
+    </div>
+    <div class="field" id="shotField" hidden>
+      <label for="fShots">Screenshots</label>
+      <input id="fShots" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple>
+    </div>
+    <p id="formError" class="error" role="alert" hidden></p>
+    <div class="actions"><button type="submit" class="btn btn-primary" id="submitBtn">Log cheater</button></div>
+  </form>
+
+  <section class="ledger" aria-labelledby="ledgerTitle">
+    <div class="ledger-head">
+      <h2 id="ledgerTitle">Flagged clubs</h2>
+      <p class="legend"><i class="y"></i>1 report <i class="r"></i>2 or more</p>
+    </div>
+    <div id="list" class="list">
+      <div class="empty"><h3>Loading the log</h3><p>Flagged clubs appear here with every report, screenshot and gamertag your club has logged.</p></div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <p>Matching ignores caps, spaces, accents and lookalike swaps like 0/O, 1/I and 5/S, so <q>L4G K1NGS</q> still finds <q>Lag Kings</q>.</p>
+    <p>From Claude Code in the ClubChecker folder, say <q>log this cheater</q> with a screenshot, or ask <q>is [club] on the list?</q></p>
+  </footer>
+</div>
+
+<div id="lightbox" class="lightbox" hidden>
+  <button type="button" class="lb-close" id="lbClose">Close</button>
+  <img id="lbImg" alt="">
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const CHEATS = ["Lag switch", "DDoS / booting", "Modded players", "Glitch abuse", "Other"];
+  const STRONG = 0.9, POSSIBLE = 0.7, PARTIAL = 0.6;
+  const state = { db: null, user: null, assets: null, canWrite: null, unavailable: false, loaded: false,
+    reports: [], groups: [], q: "", open: new Set(), confirm: null };
+
+  // ---- name matching (mirrors tools/registry.py)
+  const SYM = { "@": "a", "$": "s", "!": "i", "|": "i", "€": "e" };
+  const LOOK = { "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "8": "b", "l": "i" };
+  const UNACCENT = { "ø": "o", "æ": "ae", "œ": "oe", "ß": "ss", "đ": "d", "ł": "l", "þ": "th", "ð": "d", "ı": "i" };
+  const fold = (s) => String(s || "").normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[øæœßđłþðı]/g, (c) => UNACCENT[c]);
+  const strip = (s) => s.replace(/[^\p{L}\p{N}]/gu, "");
+  const key = (s) => strip(fold(s));
+  const loose = (s) => strip(fold(s).replace(/[@$!|€]/g, (c) => SYM[c])).replace(/[0134578l]/g, (c) => LOOK[c]).replace(/(.)\1+/gu, "$1");
+  function lev(a, b) {
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) cur.push(Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] !== b[j - 1] ? 1 : 0)));
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+  function score(q, c) {
+    const qk = key(q), ck = key(c);
+    if (!qk || !ck) return [0, ""];
+    if (qk === ck) return [1, "Exact name"];
+    const ql = loose(q), cl = loose(c);
+    if (ql === cl) return [0.95, "Lookalike spelling"];
+    const [short, long] = ql.length <= cl.length ? [ql, cl] : [cl, ql];
+    const sim = 1 - lev(ql, cl) / Math.max(ql.length, cl.length);
+    if (short.length >= 4 && long.includes(short)) {
+      const contains = 0.7 + 0.15 * short.length / long.length;
+      return sim >= contains ? [sim, "Similar name"] : [contains, "Name contains it"];
+    }
+    if (short.length <= 4) return [0, ""];
+    return [sim, "Similar name"];
+  }
+
+  // ---- data shaping
+  const when = (r) => r.matchDate || String(r.createdAt || "").slice(0, 10);
+  const list = (v) => Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : [];
+  function groupReports(reports) {
+    const parent = new Map();
+    const find = (x) => { if (!parent.has(x)) parent.set(x, x); while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+    for (const r of reports) {
+      const keys = [key(r.team), ...list(r.aka).map(key)].filter(Boolean);
+      keys.forEach(find);
+      for (const k of keys.slice(1)) parent.set(find(k), find(keys[0]));
+    }
+    const buckets = new Map();
+    for (const r of reports) {
+      const g = find(key(r.team));
+      if (!buckets.has(g)) buckets.set(g, []);
+      buckets.get(g).push(r);
+    }
+    const groups = [];
+    for (const [id, rs] of buckets) {
+      rs.sort((a, b) => (when(b) + (b.createdAt || "")).localeCompare(when(a) + (a.createdAt || "")));
+      const names = [];
+      for (const r of rs) for (const n of [r.team, ...list(r.aka)]) if (n && !names.some((x) => key(x) === key(n))) names.push(n);
+      const cheats = new Map();
+      for (const r of rs) for (const c of list(r.cheats)) cheats.set(c, (cheats.get(c) || 0) + 1);
+      const players = [...new Set(rs.flatMap((r) => list(r.players)))];
+      groups.push({ id, name: rs[0].team, names, reports: rs, cheats: [...cheats].sort((a, b) => b[1] - a[1]), players, last: when(rs[0]), first: when(rs[rs.length - 1]) });
+    }
+    return groups.sort((a, b) => b.last.localeCompare(a.last));
+  }
+  function search(q) {
+    const ql = loose(q);
+    if (key(q).length < 2) return null;
+    const hits = [];
+    for (const g of state.groups) {
+      let best = { s: 0, why: "", via: "" };
+      for (const n of g.names) {
+        let [s, why] = score(q, n);
+        const nl = loose(n);
+        if (s < POSSIBLE && ql.length >= 2 && nl.includes(ql)) { s = PARTIAL + 0.29 * ql.length / nl.length; why = "Partial name"; }
+        if (s > best.s) best = { s, why, via: n };
+      }
+      if (best.s >= PARTIAL) hits.push({ g, ...best });
+    }
+    return hits.sort((a, b) => b.s - a.s);
+  }
+
+  // ---- formatting
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  function fmtDate(d) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d || "")) return "No date";
+    const [y, m, dd] = d.split("-").map(Number);
+    return new Date(y, m - 1, dd).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  }
+  const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+  const todayISO = () => new Date().toLocaleDateString("en-CA");
+  const splitList = (s) => [...new Set(String(s || "").split(",").map((x) => x.trim()).filter(Boolean))];
+
+  // ---- rendering
+  function teamHTML(g, hit) {
+    const n = g.reports.length;
+    const open = state.open.has(g.id);
+    const aka = g.names.filter((x) => x !== g.name);
+    const meta = [aka.length ? `aka ${aka.join(", ")}` : "", `last seen ${fmtDate(g.last)}`].filter(Boolean).join(" · ");
+    const tags = g.cheats.slice(0, 4).map(([c, k]) => `<span class="tag">${esc(c)}${k > 1 ? ` ×${k}` : ""}</span>`).join("");
+    const why = hit ? `<span class="why">${esc(hit.why)}${hit.via !== g.name ? ` · “${esc(hit.via)}”` : ""}</span>` : "";
+    return `<article class="team">
+      <button type="button" class="team-head" data-g="${esc(g.id)}" aria-expanded="${open}">
+        <span class="rcard ${n > 1 ? "r" : "y"}" aria-label="${plural(n, "report")}">${n}</span>
+        <span class="team-main">
+          ${why}
+          <span class="team-name">${esc(g.name)}</span>
+          <span class="team-meta">${esc(meta)}</span>
+          ${tags ? `<span class="tags">${tags}</span>` : ""}
+        </span>
+        <span class="chev" aria-hidden="true"></span>
+      </button>
+      <div class="team-body" ${open ? "" : "hidden"}>
+        <ol class="reports">${g.reports.map((r) => reportHTML(r, g)).join("")}</ol>
+      </div>
+    </article>`;
+  }
+  function reportHTML(r, g) {
+    const bits = [`<time class="mono" datetime="${esc(when(r))}">${esc(fmtDate(when(r)))}</time>`];
+    if (r.score) bits.push(`<span class="mono ft">FT ${esc(r.score)}</span>`);
+    if (r.platform) bits.push(`<span>${esc(r.platform)}</span>`);
+    const shots = list(r.screenshots).filter((id) => /^[A-Za-z0-9_-]{8,64}$/.test(id));
+    const by = r.reporterId ? `<span data-uid="${esc(r.reporterId)}">Logged by a club mate</span>`
+      : `<span>${r.source === "claude" ? "Logged via Claude" : "Logged"}</span>`;
+    const canRemove = state.db && state.canWrite !== false;
+    const rm = !canRemove ? "" : state.confirm === r._id
+      ? `<span class="confirm">Remove this report? <button type="button" class="linkbtn danger" data-rm-yes="${esc(r._id)}">Remove</button><button type="button" class="linkbtn" data-rm-no>Keep</button></span>`
+      : `<button type="button" class="linkbtn danger" data-rm="${esc(r._id)}">Remove</button>`;
+    return `<li class="report">
+      <div class="report-line">${bits.join("")}</div>
+      ${list(r.cheats).length ? `<div class="tags">${list(r.cheats).map((c) => `<span class="tag">${esc(c)}</span>`).join("")}</div>` : ""}
+      ${key(r.team) !== key(g.name) ? `<p><span class="k">Played as</span>${esc(r.team)}</p>` : ""}
+      ${list(r.players).length ? `<p><span class="k">Gamertags</span>${esc(list(r.players).join(", "))}</p>` : ""}
+      ${r.notes ? `<p class="notes">${esc(r.notes)}</p>` : ""}
+      ${shots.length ? `<div class="shots">${shots.map((id, i) => `<button type="button" class="shot" data-shot="${esc(id)}" aria-label="Open screenshot ${i + 1}"><img src="/_blob/${esc(id)}" alt="Screenshot ${i + 1} of ${esc(r.team)}" loading="lazy"></button>`).join("")}</div>` : ""}
+      <div class="report-foot">${by}${rm}</div>
+    </li>`;
+  }
+  function render() {
+    const { groups, reports } = state;
+    $("#tally").innerHTML = state.loaded ? `<b>${groups.length}</b> ${groups.length === 1 ? "club" : "clubs"} · <b>${reports.length}</b> ${reports.length === 1 ? "report" : "reports"}` : "";
+    const writable = !!state.db && state.canWrite !== false;
+    $("#openLog").hidden = !writable || !$("#logForm").hidden;
+    $("#readonly").hidden = !(state.db && state.canWrite === false);
+
+    const listEl = $("#list"), verdict = $("#verdict");
+    if (state.unavailable) {
+      verdict.innerHTML = "";
+      listEl.innerHTML = `<div class="empty"><h3>The shared log isn't available here</h3><p>Open this page on claude.ai while signed in, using the link it was shared with, to check and log clubs.</p></div>`;
+      return;
+    }
+    if (!state.loaded) return;
+    const hits = search(state.q);
+    if (!hits) {
+      verdict.innerHTML = "";
+      listEl.innerHTML = groups.length ? groups.map((g) => teamHTML(g)).join("")
+        : `<div class="empty"><h3>No cheaters logged yet</h3><p>When a club lag-switches, boots you offline or plays with modded players, log them here so the rest of the squad knows before kick-off.</p>${writable ? `<button type="button" class="btn btn-primary" data-log="">Log the first one</button>` : ""}</div>`;
+    } else {
+      const strong = hits.filter((h) => h.s >= STRONG);
+      const q = esc(state.q.trim());
+      if (strong.length) {
+        const n = strong.reduce((t, h) => t + h.g.reports.length, 0);
+        verdict.innerHTML = `<span class="pill pill-red">On the log</span><p>${plural(n, "report")} for “${esc(strong[0].g.name)}”${strong.length > 1 ? ` and ${strong.length - 1} more` : ""}. Open it below for the evidence.</p>`;
+      } else if (hits.length) {
+        verdict.innerHTML = `<span class="pill pill-yellow">Close match</span><p>“${q}” isn't logged by that exact name, but ${hits.length === 1 ? "this club is" : "these clubs are"} close. Could be a rename or a typo.</p>`;
+      } else {
+        verdict.innerHTML = `<span class="pill pill-clean">Not on the log</span><p>No reports for “${q}”.</p>${writable ? `<button type="button" class="linkbtn" data-log="${q}">Log them</button>` : ""}`;
+      }
+      listEl.innerHTML = hits.map((h) => teamHTML(h.g, h)).join("") || "";
+    }
+    fillNames();
+  }
+  async function fillNames() {
+    const els = [...document.querySelectorAll("[data-uid]")];
+    if (!state.user || !els.length) return;
+    const ps = await state.user.profiles([...new Set(els.map((e) => e.dataset.uid))]);
+    for (const el of els) { const p = ps[el.dataset.uid]; if (p && p.name) el.textContent = `Logged by ${p.name}`; }
+  }
+
+  // ---- toast & lightbox
+  let toastTimer;
+  function toast(msg) {
+    const t = $("#toast");
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
+  }
+  function openShot(id) { $("#lbImg").src = `/_blob/${id}`; $("#lightbox").hidden = false; $("#lbClose").focus(); }
+  function closeShot() { $("#lightbox").hidden = true; $("#lbImg").removeAttribute("src"); }
+  $("#lbClose").addEventListener("click", closeShot);
+  $("#lightbox").addEventListener("click", (e) => { if (e.target.id === "lightbox") closeShot(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#lightbox").hidden) closeShot(); });
+
+  // ---- list interactions
+  $("#list").addEventListener("click", async (e) => {
+    const head = e.target.closest(".team-head");
+    if (head) {
+      const id = head.dataset.g;
+      state.open.has(id) ? state.open.delete(id) : state.open.add(id);
+      render();
+      document.querySelector(`.team-head[data-g="${CSS.escape(id)}"]`)?.focus();
+      return;
+    }
+    const shot = e.target.closest("[data-shot]");
+    if (shot) return openShot(shot.dataset.shot);
+    const rm = e.target.closest("[data-rm]");
+    if (rm) { state.confirm = rm.dataset.rm; return render(); }
+    if (e.target.closest("[data-rm-no]")) { state.confirm = null; return render(); }
+    const yes = e.target.closest("[data-rm-yes]");
+    if (yes) return removeReport(yes.dataset.rmYes);
+    const log = e.target.closest("[data-log]");
+    if (log) openForm(log.dataset.log);
+  });
+  $("#verdict").addEventListener("click", (e) => {
+    const log = e.target.closest("[data-log]");
+    if (log) openForm(state.q.trim());
+  });
+  async function removeReport(id) {
+    const r = state.reports.find((x) => x._id === id);
+    state.confirm = null;
+    try {
+      await state.db.collection("reports").doc(id).delete();
+      toast("Report removed");
+      if (state.assets && r) for (const s of list(r.screenshots)) state.assets.delete(s).catch(() => {});
+    } catch (err) {
+      toast(err && err.code === "invalid_argument" ? "You don't have permission to remove reports." : "Couldn't remove the report. Try again.");
+      render();
+    }
+  }
+
+  // ---- search
+  $("#q").addEventListener("input", (e) => { state.q = e.target.value; render(); });
+
+  // ---- log form
+  $("#fCheats").innerHTML = CHEATS.map((c, i) => `<label class="pick"><input type="checkbox" id="fCheat${i}" value="${esc(c)}"><span>${esc(c)}</span></label>`).join("");
+  function openForm(team) {
+    const f = $("#logForm");
+    f.hidden = false;
+    if (!$("#fDate").value) $("#fDate").value = todayISO();
+    if (team) $("#fTeam").value = team;
+    dupHint();
+    render();
+    (team ? $("#fCheat0") : $("#fTeam")).focus();
+  }
+  function closeForm() { $("#logForm").hidden = true; $("#formError").hidden = true; render(); }
+  $("#openLog").addEventListener("click", () => openForm(state.q.trim()));
+  $("#closeLog").addEventListener("click", closeForm);
+  function dupHint() {
+    const el = $("#dupHint"), team = $("#fTeam").value;
+    const hits = state.loaded ? (search(team) || []).filter((h) => h.s >= POSSIBLE) : [];
+    if (!hits.length) { el.hidden = true; return; }
+    const h = hits[0], n = h.g.reports.length;
+    el.innerHTML = h.s >= STRONG
+      ? `Already on the log as <b>${esc(h.g.name)}</b> with ${plural(n, "report")}. Logging again adds another report.`
+      : `Close to <b>${esc(h.g.name)}</b> (${plural(n, "report")}). If it's the same club under a new name, put the old name in “Other club names” so both get linked.`;
+    el.hidden = false;
+  }
+  $("#fTeam").addEventListener("input", dupHint);
+  function formError(msg) { const el = $("#formError"); el.textContent = msg; el.hidden = !msg; }
+  const UPLOAD_ERRORS = {
+    too_large: "That screenshot is over 20 MB. Crop it or save it as JPG and try again.",
+    unsupported_type: "Screenshots need to be PNG, JPG, WebP or GIF.",
+    rate_limited: "Too many uploads in a row. Wait a minute, then try again.",
+    quota_or_state: "Screenshot storage for this log is full. Remove old reports with screenshots, or log this one without.",
+  };
+  $("#logForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    formError("");
+    const team = $("#fTeam").value.trim();
+    if (!key(team)) { formError("Enter the club name as it appears in game."); return $("#fTeam").focus(); }
+    const cheats = [...document.querySelectorAll("#fCheats input:checked")].map((i) => i.value);
+    if (!cheats.length) { formError("Pick at least one thing they did. Use Other and add notes if none fit."); return $("#fCheat0").focus(); }
+    const btn = $("#submitBtn");
+    btn.disabled = true; btn.textContent = "Logging…";
+    const files = state.assets ? [...$("#fShots").files] : [];
+    const uploaded = [];
+    try {
+      for (const [i, f] of files.entries()) {
+        btn.textContent = `Uploading ${i + 1} of ${files.length}…`;
+        uploaded.push((await state.assets.upload(f)).id);
+      }
+      const now = new Date();
+      const id = "r" + now.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "") + "-" + Math.random().toString(16).slice(2, 6).padEnd(4, "0");
+      const doc = {
+        team, teamKey: key(team),
+        aka: splitList($("#fAka").value).filter((a) => key(a) && key(a) !== key(team)),
+        cheats, players: splitList($("#fPlayers").value),
+        platform: $("#fPlatform").value, score: $("#fScore").value.trim(),
+        matchDate: $("#fDate").value || todayISO(), notes: $("#fNotes").value.trim(),
+        screenshots: uploaded, createdAt: now.toISOString().replace(/\.\d+Z$/, "Z"), source: "page",
+      };
+      const uid = state.user ? await state.user.id() : null;
+      if (uid) doc.reporterId = uid;
+      await state.db.collection("reports").doc(id).set(doc);
+      $("#logForm").reset();
+      $("#dupHint").hidden = true;
+      $("#logForm").hidden = true;
+      state.q = team; $("#q").value = team;
+      toast(`Logged ${team}`);
+      render();
+    } catch (err) {
+      const code = err && err.code;
+      if (state.assets) for (const s of uploaded) state.assets.delete(s).catch(() => {});
+      if (code === "invalid_argument" && !files.length) { state.canWrite = false; formError("You can view this log but not add to it. Ask whoever shared it to invite you as an Editor."); render(); }
+      else if (code === "quota_exceeded") formError("The log has hit its storage limit. Remove some old reports, then try again.");
+      else formError(UPLOAD_ERRORS[code] || "Couldn't save the report. Check your connection and try again.");
+    } finally {
+      btn.disabled = false; btn.textContent = "Log cheater";
+    }
+  });
+
+  // ---- boot
+  async function boot() {
+    if (!window.claude || typeof window.claude.use !== "function") { state.unavailable = true; return render(); }
+    const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+    state.db = db; state.user = user;
+    if (!db) { state.unavailable = true; return render(); }
+    state.canWrite = user ? await user.can("data.write") : null;
+    render();
+    window.claude.use("assets").then((a) => { state.assets = a; $("#shotField").hidden = !a; });
+    db.collection("reports").onSnapshot((snap) => {
+      state.reports = snap.docs.filter((d) => d.exists).map((d) => ({ ...d.data(), _id: d.id })).filter((r) => typeof r.team === "string" && r.team.trim());
+      state.groups = groupReports(state.reports);
+      state.loaded = true;
+      render();
+      if (!$("#logForm").hidden) dupHint();
+    }, () => {
+      state.unavailable = true; render();
+    });
+  }
+  boot();
+})();
+</script>

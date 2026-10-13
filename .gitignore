@@ -1,0 +1,5 @@
+# Temporary copies of the shared database, rebuilt on every skill run
+.cache/
+__pycache__/
+# Screenshot inbox: files are uploaded to the page, then deleted
+screenshots/
