@@ -37,7 +37,7 @@ Python 3 is required for the skills, with no extra packages.
 
 Reports can't be edited or deleted from the page or the skills. The project owner does it in the Supabase dashboard: **Table Editor → reports** for the report, **Storage → screenshots** for its images.
 
-Free Supabase projects pause after about a week without use. If the page says it couldn't load the log, restore the project from the Supabase dashboard.
+Free Supabase projects pause after about a week without database activity. A scheduled GitHub workflow ([`keep-alive.yml`](.github/workflows/keep-alive.yml)) queries the database twice a day to prevent that. GitHub switches off scheduled workflows in public repos after 60 days without a commit (it emails a warning first); re-enable it from the repo's **Actions** tab. If the page ever says it couldn't load the log, restore the project from the Supabase dashboard.
 
 ## Run your own
 
@@ -52,6 +52,7 @@ Free Supabase projects pause after about a week without use. If the page says it
 index.html                         the page (served by GitHub Pages)
 config.json                        page URL, Supabase connection, your club names
 supabase/setup.sql                 database table, permissions and screenshot bucket
+.github/workflows/keep-alive.yml   twice-daily database query so Supabase doesn't pause
 tools/registry.py                  name matching, checking and saving reports
 .claude/skills/register-cheater/   skill: log a cheater
 .claude/skills/check-cheater/      skill: check a club

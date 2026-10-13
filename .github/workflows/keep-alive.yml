@@ -1,0 +1,25 @@
+name: Keep Supabase awake
+
+# Free Supabase projects pause after about a week without database activity.
+# This reads the reports table twice a day so the project stays active.
+on:
+  schedule:
+    - cron: "17 6,18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Query the reports table
+        run: |
+          url=$(jq -r .supabaseUrl config.json)
+          key=$(jq -r .supabaseKey config.json)
+          curl --fail --silent --show-error --retry 3 --retry-delay 10 \
+            "$url/rest/v1/reports?select=id&limit=1" -H "apikey: $key" -o /dev/null
+          echo "Supabase answered."
