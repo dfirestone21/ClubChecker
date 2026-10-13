@@ -1,5 +1,6 @@
-# Temporary copies of the shared database, rebuilt on every skill run
-.cache/
-__pycache__/
-# Screenshot inbox: files are uploaded to the page, then deleted
+# Screenshot inbox: files are uploaded with their report, then deleted
 screenshots/
+__pycache__/
+# Local-only Claude Code settings
+.claude/launch.json
+.claude/settings.local.json

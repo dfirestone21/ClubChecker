@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""Local helper for the Club Checker skills (FC 27 Pro Clubs cheater registry).
+"""Helper for the Club Checker skills (FC 27 Pro Clubs cheater registry).
 
-The registry lives in a shared claude.ai artifact database (collection
-"reports"), which Claude reads and writes with the ArtifactData tool. This
-script handles the deterministic parts around those calls:
+Reports live in a Supabase database (table "reports") and screenshots in its
+"screenshots" storage bucket; the web page and these commands share them.
+Connection details come from config.json (supabaseUrl, supabaseKey).
 
-  prep-cache                 empty the local cache folder and print its path
-                             (pass it as ArtifactData's out_dir when listing)
-  match NAME [NAME ...]      fuzzy-match club names against the cached reports
-  match --all                list every flagged club in the cache
-  new-report --team ...      build a report document to write with ArtifactData
-  key NAME                   print the teamKey stored for a club name
-  latest-screenshot [-n N]   newest images in screenshots/ not yet logged
-  discard PATH [PATH ...]    delete screenshots from screenshots/ once uploaded
+  match NAME [NAME ...]      check club names against the registry (fuzzy)
+  match --all                list every flagged club
+  add --team ... [--file IMG ...]
+                             upload screenshots and save a report; files in
+                             screenshots/ are deleted once the report is saved
+  key NAME                   print the team_key stored for a club name
+  latest-screenshot [-n N]   newest images waiting in screenshots/
 
 Name matching mirrors the web page: case, spacing, punctuation and accents are
 ignored, and common lookalikes (0/o, 1/l/i, 3/e, 5/s, ...) count as the same.
@@ -21,28 +20,27 @@ ignored, and common lookalikes (0/o, 1/l/i, 3/e, 5/s, ...) count as the same.
 import argparse
 import json
 import re
-import secrets
-import shutil
 import sys
 import unicodedata
+import urllib.error
+import urllib.request
+import uuid
 from collections import Counter, defaultdict
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "config.json"
-CACHE = ROOT / ".cache" / "registry"
-OUTGOING = ROOT / ".cache" / "outgoing"
 INBOX = ROOT / "screenshots"
-IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+CONTENT_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                 ".webp": "image/webp", ".gif": "image/gif"}
+MAX_UPLOAD = 10 * 1024 * 1024  # matches the bucket limit in supabase/setup.sql
 
 # Canonical cheat labels, shared with the web page's chips.
-CHEATS = ["Lag switch", "DDoS / booting", "Modded players", "Glitch abuse", "Other"]
+CHEATS = ["Slider hack", "Modded players", "Glitch abuse", "Other"]
 CHEAT_ALIASES = {
-    "lag": "Lag switch", "lagswitch": "Lag switch", "lagging": "Lag switch",
-    "lagswitching": "Lag switch", "connection": "Lag switch",
-    "ddos": "DDoS / booting", "dos": "DDoS / booting", "boot": "DDoS / booting",
-    "booting": "DDoS / booting", "booted": "DDoS / booting", "kicked": "DDoS / booting",
+    "slider": "Slider hack", "sliders": "Slider hack", "sliderhack": "Slider hack",
+    "sliderhacks": "Slider hack", "sliderhacking": "Slider hack", "sliderhacker": "Slider hack",
     "mod": "Modded players", "modded": "Modded players", "mods": "Modded players",
     "hack": "Modded players", "hacked": "Modded players", "hacks": "Modded players",
     "hacker": "Modded players", "moddedplayers": "Modded players",
@@ -73,7 +71,7 @@ def strip(s):
 
 
 def key(name):
-    """Stored teamKey: lowercase letters and digits only."""
+    """Stored team_key: lowercase letters and digits only."""
     return strip(fold(name))
 
 
@@ -113,41 +111,73 @@ def score(query, candidate):
     return sim, "similar"
 
 
-# ---------------------------------------------------------------- data
+# ---------------------------------------------------------------- supabase
 
 def load_config():
-    if not CONFIG.exists():
-        return {"registryUrl": "", "ownClubs": []}
-    return json.loads(CONFIG.read_text(encoding="utf-8"))
+    config = json.loads(CONFIG.read_text(encoding="utf-8")) if CONFIG.exists() else {}
+    if not config.get("supabaseUrl") or not config.get("supabaseKey"):
+        sys.exit(f"error: set supabaseUrl and supabaseKey in {CONFIG}")
+    return config
 
 
-def unwrap(obj):
-    """Accept either a bare report body or a {data: {...}} wrapper."""
-    if isinstance(obj, dict) and "team" not in obj and isinstance(obj.get("data"), dict):
-        return obj["data"]
-    return obj
+def api(config, method, path, body=None, raw=None, content_type=None, headers=None):
+    """Call the Supabase REST or Storage API and return the parsed JSON reply."""
+    key_ = config["supabaseKey"]
+    h = {"apikey": key_, "User-Agent": "club-checker"}
+    if key_.startswith("eyJ"):  # legacy anon keys are JWTs and also go in Authorization
+        h["Authorization"] = f"Bearer {key_}"
+    h.update(headers or {})
+    data = None
+    if raw is not None:
+        data, h["Content-Type"] = raw, content_type
+    elif body is not None:
+        data, h["Content-Type"] = json.dumps(body).encode("utf-8"), "application/json"
+    req = urllib.request.Request(config["supabaseUrl"].rstrip("/") + path, data=data, method=method, headers=h)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            text = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", "replace")[:500]
+        sys.exit(f"error: Supabase answered {e.code} to {method} {path.split('?')[0]}: {detail}")
+    except urllib.error.URLError as e:
+        sys.exit(f"error: couldn't reach Supabase ({e.reason}). "
+                 "If the project is paused, restore it from the Supabase dashboard.")
+    return json.loads(text) if text else None
 
 
-def load_reports():
-    folder = CACHE / "reports"
-    reports = []
-    if not folder.exists():
-        return reports
-    for f in sorted(folder.glob("*.json")):
-        try:
-            body = unwrap(json.loads(f.read_text(encoding="utf-8")))
-        except (OSError, json.JSONDecodeError) as e:
-            print(f"warning: skipped unreadable {f.name}: {e}", file=sys.stderr)
-            continue
-        if not isinstance(body, dict) or not body.get("team"):
-            continue
-        body["_id"] = f.stem
-        reports.append(body)
-    return reports
+def fetch_reports(config):
+    rows, offset = [], 0
+    while True:
+        page = api(config, "GET", f"/rest/v1/reports?select=*&order=created_at.asc&limit=1000&offset={offset}")
+        rows += page
+        if len(page) < 1000:
+            return rows
+        offset += 1000
 
+
+def upload_screenshot(config, path):
+    """Upload one image to the screenshots bucket and return its object name."""
+    path = Path(path)
+    ctype = CONTENT_TYPES.get(path.suffix.lower())
+    if not ctype:
+        sys.exit(f"error: {path.name} isn't a PNG, JPG, WebP or GIF")
+    data = path.read_bytes()
+    if len(data) > MAX_UPLOAD:
+        sys.exit(f"error: {path.name} is over 10 MB")
+    name = f"{date.today().isoformat()}-{uuid.uuid4().hex[:12]}{path.suffix.lower()}"
+    api(config, "POST", f"/storage/v1/object/screenshots/{name}", raw=data, content_type=ctype,
+        headers={"x-upsert": "false"})
+    return name
+
+
+def insert_report(config, doc):
+    return api(config, "POST", "/rest/v1/reports", body=doc, headers={"Prefer": "return=representation"})[0]
+
+
+# ---------------------------------------------------------------- grouping
 
 def when(r):
-    return r.get("matchDate") or (r.get("createdAt") or "")[:10]
+    return r.get("match_date") or (r.get("created_at") or "")[:10]
 
 
 def group_reports(reports):
@@ -174,26 +204,24 @@ def group_reports(reports):
 
     groups = []
     for rs in buckets.values():
-        rs.sort(key=lambda r: (when(r), r.get("createdAt") or ""), reverse=True)
+        rs.sort(key=lambda r: (when(r), r.get("created_at") or ""), reverse=True)
         names = []
         for r in rs:
             for n in [r["team"]] + list(r.get("aka") or []):
                 if n and key(n) not in {key(x) for x in names}:
                     names.append(n)
-        cheats = Counter(c for r in rs for c in (r.get("cheats") or []))
         players = []
         for r in rs:
             for p in r.get("players") or []:
                 if p not in players:
                     players.append(p)
-        platforms = sorted({r["platform"] for r in rs if r.get("platform")})
         groups.append({
             "name": rs[0]["team"],
             "names": names,
             "reports": rs,
-            "cheats": cheats,
+            "cheats": Counter(c for r in rs for c in (r.get("cheats") or [])),
             "players": players,
-            "platforms": platforms,
+            "platforms": sorted({r["platform"] for r in rs if r.get("platform")}),
             "last_seen": when(rs[0]),
             "first_seen": when(rs[-1]),
         })
@@ -244,34 +272,26 @@ def describe_group(g, indent="  "):
         shots = len(r.get("screenshots") or [])
         if shots:
             bits.append(f"{shots} screenshot{'s' if shots != 1 else ''}")
-        lines.append(f"{indent}    - " + " | ".join(bits) + f"  [id {r['_id']}]")
+        if r.get("reporter"):
+            bits.append(f"by {r['reporter']}")
+        lines.append(f"{indent}    - " + " | ".join(bits) + f"  [id {str(r.get('id', ''))[:8]}]")
         if r.get("notes"):
             lines.append(f'{indent}      notes: "{r["notes"]}"')
     return "\n".join(lines)
 
 
+def summary(groups, reports):
+    return (f"Registry: {len(groups)} flagged club{'s' if len(groups) != 1 else ''}, "
+            f"{len(reports)} report{'s' if len(reports) != 1 else ''}.")
+
+
 # ---------------------------------------------------------------- commands
-
-def cmd_prep_cache(_args):
-    if CACHE.exists():
-        shutil.rmtree(CACHE)
-    CACHE.mkdir(parents=True)
-    print(CACHE)
-
 
 def cmd_match(args):
     config = load_config()
-    reports = load_reports()
+    reports = fetch_reports(config)
     groups = group_reports(reports)
-    if not reports:
-        print(f"No reports in the local cache ({CACHE}).")
-        print("If you haven't fetched yet: run prep-cache, then ArtifactData list on "
-              "collection 'reports' with out_dir set to that path. Otherwise the registry is empty.")
-        if not args.names:
-            return
-    else:
-        print(f"Registry: {len(groups)} flagged club{'s' if len(groups) != 1 else ''}, "
-              f"{len(reports)} report{'s' if len(reports) != 1 else ''}.")
+    print(summary(groups, reports) if reports else "Registry: empty so far.")
 
     if args.all:
         for g in groups:
@@ -321,7 +341,7 @@ def split_list(values):
     return out
 
 
-def cmd_new_report(args):
+def build_report(args):
     team = args.team.strip()
     if not key(team):
         sys.exit("error: --team must contain at least one letter or digit")
@@ -330,38 +350,61 @@ def cmd_new_report(args):
         date.fromisoformat(match_date)
     except ValueError:
         sys.exit("error: --date must be YYYY-MM-DD")
-    now = datetime.now(timezone.utc)
-    doc_id = f"r{now.strftime('%Y%m%dT%H%M%SZ')}-{secrets.token_hex(2)}"
     cheats = []
     for c in split_list(args.cheat):
         c = normalize_cheat(c)
         if c not in cheats:
             cheats.append(c)
-    doc = {
+    return {
         "team": team,
-        "teamKey": key(team),
+        "team_key": key(team),
         "aka": [a for a in split_list(args.aka) if key(a) != key(team)],
         "cheats": cheats,
         "players": split_list(args.player),
         "platform": (args.platform or "").strip(),
         "score": (args.score or "").strip(),
-        "matchDate": match_date,
+        "match_date": match_date,
         "notes": (args.notes or "").strip(),
-        "screenshots": split_list(args.screenshot_id),
-        "createdAt": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "screenshots": [],
+        "reporter": (args.reporter or "").strip(),
         "source": "claude",
     }
-    OUTGOING.mkdir(parents=True, exist_ok=True)
-    path = OUTGOING / f"{doc_id}.json"
-    path.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"doc_id: {doc_id}")
-    print(f"file:   {path}")
-    print(json.dumps(doc, indent=2, ensure_ascii=False))
+
+
+def cmd_add(args):
+    doc = build_report(args)
+    files = [Path(f) for f in args.file or []]
+    for f in files:
+        if not f.is_file():
+            sys.exit(f"error: screenshot not found: {f}")
+    if args.dry_run:
+        print(json.dumps(doc, indent=2, ensure_ascii=False))
+        print(f"(dry run: {len(files)} screenshot(s) not uploaded, nothing saved)")
+        return
+
+    config = load_config()
+    doc["screenshots"] = [upload_screenshot(config, f) for f in files]
+    row = insert_report(config, doc)
+    print(f"Saved report {row['id'][:8]} for \"{row['team']}\" with {len(doc['screenshots'])} screenshot(s).")
+
+    for f in files:
+        if f.resolve().parent == INBOX.resolve():
+            f.unlink()
+            print(f"Deleted inbox copy: {f.name}")
+
+    reports = fetch_reports(config)
+    for g in group_reports(reports):
+        if any(r["id"] == row["id"] for r in g["reports"]):
+            n = len(g["reports"])
+            print(f"\"{g['name']}\" now has {n} report{'s' if n != 1 else ''} - {card(n)}.")
+    print(summary(group_reports(reports), reports))
+    if config.get("pageUrl"):
+        print(f"Page: {config['pageUrl']}")
 
 
 def cmd_latest_screenshot(args):
     INBOX.mkdir(exist_ok=True)
-    files = [p for p in INBOX.iterdir() if p.is_file() and p.suffix.lower() in IMAGE_EXTS]
+    files = [p for p in INBOX.iterdir() if p.is_file() and p.suffix.lower() in CONTENT_TYPES]
     if not files:
         print(f"No screenshots waiting in {INBOX}")
         return
@@ -369,19 +412,6 @@ def cmd_latest_screenshot(args):
     for p in files[: args.n]:
         stamp = datetime.fromtimestamp(p.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
         print(f"{stamp}  {p}")
-
-
-def cmd_discard(args):
-    for raw in args.paths:
-        src = Path(raw)
-        if not src.exists():
-            print(f"skipped (not found): {src}")
-            continue
-        if src.resolve().parent != INBOX.resolve():
-            print(f"left in place (outside screenshots/): {src}")
-            continue
-        src.unlink()
-        print(f"deleted: {src.name}")
 
 
 def main():
@@ -394,36 +424,32 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("prep-cache", help="empty the cache folder and print its path").set_defaults(fn=cmd_prep_cache)
-
-    m = sub.add_parser("match", help="fuzzy-match club names against the cached reports")
+    m = sub.add_parser("match", help="check club names against the registry")
     m.add_argument("names", nargs="*")
     m.add_argument("--all", action="store_true", help="list every flagged club")
     m.set_defaults(fn=cmd_match)
 
-    n = sub.add_parser("new-report", help="build a report document for ArtifactData set")
-    n.add_argument("--team", required=True, help="club name exactly as shown in game")
-    n.add_argument("--aka", action="append", help="other names for the same club (repeatable or comma-separated)")
-    n.add_argument("--cheat", action="append", help=f"cheat type, e.g. {', '.join(CHEATS)}")
-    n.add_argument("--player", action="append", help="gamertag of a cheating player")
-    n.add_argument("--platform", help="PlayStation, Xbox or PC")
-    n.add_argument("--score", help="final score from your side, e.g. 1-4")
-    n.add_argument("--date", help="match date YYYY-MM-DD (default today)")
-    n.add_argument("--notes", help="free-text notes")
-    n.add_argument("--screenshot-id", action="append", help="asset id from the screenshot upload")
-    n.set_defaults(fn=cmd_new_report)
+    a = sub.add_parser("add", help="upload screenshots and save a report")
+    a.add_argument("--team", required=True, help="club name exactly as shown in game")
+    a.add_argument("--aka", action="append", help="other names for the same club (repeatable or comma-separated)")
+    a.add_argument("--cheat", action="append", help=f"cheat type, e.g. {', '.join(CHEATS)}")
+    a.add_argument("--player", action="append", help="gamertag of a cheating player")
+    a.add_argument("--platform", help="PlayStation, Xbox or PC")
+    a.add_argument("--score", help="final score from your side, e.g. 1-4")
+    a.add_argument("--date", help="match date YYYY-MM-DD (default today)")
+    a.add_argument("--notes", help="free-text notes")
+    a.add_argument("--reporter", help="who's logging it, shown as 'Logged by ...'")
+    a.add_argument("--file", action="append", help="screenshot to upload (repeatable)")
+    a.add_argument("--dry-run", action="store_true", help="print the report without uploading or saving")
+    a.set_defaults(fn=cmd_add)
 
-    k = sub.add_parser("key", help="print the teamKey for a club name")
+    k = sub.add_parser("key", help="print the team_key for a club name")
     k.add_argument("name")
-    k.set_defaults(fn=lambda a: print(key(a.name)))
+    k.set_defaults(fn=lambda args: print(key(args.name)))
 
     s = sub.add_parser("latest-screenshot", help="newest images waiting in screenshots/")
     s.add_argument("-n", type=int, default=1, help="how many to list (default 1)")
     s.set_defaults(fn=cmd_latest_screenshot)
-
-    d = sub.add_parser("discard", help="delete uploaded screenshots from screenshots/")
-    d.add_argument("paths", nargs="+")
-    d.set_defaults(fn=cmd_discard)
 
     args = p.parse_args()
     args.fn(args)

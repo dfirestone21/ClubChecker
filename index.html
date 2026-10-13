@@ -1,4 +1,11 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Club Checker</title>
+<meta name="description" content="Shared FC 27 Pro Clubs cheater log: check a club before kick-off and log new cheaters.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='9' width='13' height='18' rx='2' fill='%23E8B51F' transform='rotate(-12 10 18)'/%3E%3Crect x='14' y='5' width='13' height='18' rx='2' fill='%23CF2338' transform='rotate(8 20 14)'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Saira+Condensed:wght@600;700;800&display=swap">
@@ -21,28 +28,25 @@
   --font-display: "Saira Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   --font-body: "Barlow", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root {
     --bg: #0D1411; --surface: #151F1A; --ink: #E3EBE6; --muted: #93A49B; --line: #29372F; --chip: #1E2A24;
     --pitch: #45C285; --yellow: #F0C33C; --red: #E5384D; --on-yellow: #241B00; --on-red: #FFFFFF; --on-ink: #0D1411;
     --shadow: 0 1px 2px rgb(0 0 0 / .35), 0 10px 28px rgb(0 0 0 / .3);
     color-scheme: dark;
   }
 }
-:root[data-theme="dark"] {
-  --bg: #0D1411; --surface: #151F1A; --ink: #E3EBE6; --muted: #93A49B; --line: #29372F; --chip: #1E2A24;
-  --pitch: #45C285; --yellow: #F0C33C; --red: #E5384D; --on-yellow: #241B00; --on-red: #FFFFFF; --on-ink: #0D1411;
-  --shadow: 0 1px 2px rgb(0 0 0 / .35), 0 10px 28px rgb(0 0 0 / .3);
-  color-scheme: dark;
-}
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { background: var(--bg); color: var(--ink); font: 400 16px/1.5 var(--font-body); -webkit-font-smoothing: antialiased; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.5 var(--font-body); -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; }
 .wrap { max-width: 760px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 28px; }
 h1, h2 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
 p { margin: 0; }
+a { color: var(--pitch); }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--pitch); outline-offset: 2px; }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -86,7 +90,6 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
 .btn-ghost { background: transparent; border-color: var(--line); }
 .btn-ghost:hover { border-color: var(--ink); }
 .linkbtn { background: none; border: 0; padding: 0; color: var(--pitch); font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
-.danger { color: var(--red); }
 
 /* log form */
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 16px; box-shadow: var(--shadow); }
@@ -109,8 +112,8 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
 .pick span { display: inline-block; padding: 7px 13px; border-radius: 999px; border: 1.5px solid var(--line); font-weight: 500; font-size: .93rem; }
 .pick input:checked + span { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
 .pick input:focus-visible + span { outline: 2px solid var(--pitch); outline-offset: 2px; }
-.actions { display: flex; justify-content: flex-end; }
-.readonly { font-size: .9rem; color: var(--muted); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
 /* ledger */
 .ledger { display: grid; gap: 12px; }
@@ -148,8 +151,7 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
 .shots { display: flex; flex-wrap: wrap; gap: 8px; }
 .shot { padding: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--chip); cursor: zoom-in; width: 132px; aspect-ratio: 16 / 9; max-width: 100%; }
 .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.report-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: .84rem; color: var(--muted); }
-.confirm { display: inline-flex; align-items: center; gap: 12px; color: var(--ink); }
+.report-foot { font-size: .84rem; color: var(--muted); }
 .empty { padding: 28px 20px; border: 1.5px dashed var(--line); border-radius: 12px; display: grid; gap: 8px; justify-items: start; }
 .empty h3 { margin: 0; font-family: var(--font-display); font-size: 1.25rem; }
 .empty p { color: var(--muted); max-width: 52ch; }
@@ -165,7 +167,8 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
 .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--on-ink); padding: 10px 16px; border-radius: 10px; font-weight: 500; box-shadow: var(--shadow); z-index: 11; max-width: calc(100% - 32px); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
-
+</head>
+<body>
 <div class="wrap">
   <header class="top">
     <div class="brand">
@@ -178,14 +181,13 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
   <section class="check">
     <div class="check-head">
       <label class="label" for="q">Check a club</label>
-      <button id="openLog" class="btn btn-ghost" type="button" hidden>+ Log a cheater</button>
+      <button id="openLog" class="btn btn-ghost" type="button">+ Log a cheater</button>
     </div>
     <div class="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg>
       <input id="q" type="search" placeholder="Club name from the lobby" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
     </div>
     <div id="verdict" class="verdict" aria-live="polite"></div>
-    <p id="readonly" class="readonly" hidden>You can check clubs here but not add them. Ask whoever shared this page to invite you as an Editor.</p>
   </section>
 
   <form id="logForm" class="panel" hidden novalidate>
@@ -222,23 +224,31 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
       </div>
       <div class="field">
         <label for="fAka">Other club names</label>
-        <input id="fAka" placeholder="If they renamed" autocomplete="off">
+        <input id="fAka" placeholder="If they renamed" maxlength="200" autocomplete="off">
       </div>
     </div>
     <div class="field">
       <label for="fPlayers">Gamertags</label>
-      <input id="fPlayers" placeholder="Separate with commas" autocomplete="off" spellcheck="false">
+      <input id="fPlayers" placeholder="Separate with commas" maxlength="300" autocomplete="off" spellcheck="false">
     </div>
     <div class="field">
       <label for="fNotes">Notes</label>
-      <textarea id="fNotes" rows="3" placeholder="What happened? e.g. ball froze every time we attacked"></textarea>
+      <textarea id="fNotes" rows="3" maxlength="2000" placeholder="What happened? e.g. their players had max speed all game"></textarea>
     </div>
-    <div class="field" id="shotField" hidden>
-      <label for="fShots">Screenshots</label>
+    <div class="field">
+      <label for="fShots">Screenshots <span class="req">up to 6</span></label>
       <input id="fShots" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple>
     </div>
+    <div class="field">
+      <label for="fReporter">Your name <span class="req">optional, shown on the report</span></label>
+      <input id="fReporter" maxlength="40" autocomplete="nickname" spellcheck="false">
+    </div>
+    <div class="trap" aria-hidden="true"><label for="fWebsite">Leave this empty</label><input id="fWebsite" tabindex="-1" autocomplete="off"></div>
     <p id="formError" class="error" role="alert" hidden></p>
-    <div class="actions"><button type="submit" class="btn btn-primary" id="submitBtn">Log cheater</button></div>
+    <div class="actions">
+      <p class="hint">Reports can't be edited after you log them, so double-check the club name.</p>
+      <button type="submit" class="btn btn-primary" id="submitBtn">Log cheater</button>
+    </div>
   </form>
 
   <section class="ledger" aria-labelledby="ledgerTitle">
@@ -247,13 +257,13 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
       <p class="legend"><i class="y"></i>1 report <i class="r"></i>2 or more</p>
     </div>
     <div id="list" class="list">
-      <div class="empty"><h3>Loading the log</h3><p>Flagged clubs appear here with every report, screenshot and gamertag your club has logged.</p></div>
+      <div class="empty"><h3>Loading the log</h3><p>Flagged clubs appear here with every report, screenshot and gamertag the squad has logged.</p></div>
     </div>
   </section>
 
   <footer class="foot">
     <p>Matching ignores caps, spaces, accents and lookalike swaps like 0/O, 1/I and 5/S, so <q>L4G K1NGS</q> still finds <q>Lag Kings</q>.</p>
-    <p>From Claude Code in the ClubChecker folder, say <q>log this cheater</q> with a screenshot, or ask <q>is [club] on the list?</q></p>
+    <p>Logging from Claude Code? Clone <a href="https://github.com/dfirestone21/ClubChecker">the repo</a>, open it in Claude Code and say <q>log this cheater</q> with a screenshot.</p>
   </footer>
 </div>
 
@@ -266,10 +276,10 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
 <script>
 (() => {
   const $ = (s) => document.querySelector(s);
-  const CHEATS = ["Lag switch", "DDoS / booting", "Modded players", "Glitch abuse", "Other"];
+  const CHEATS = ["Slider hack", "Modded players", "Glitch abuse", "Other"];
   const STRONG = 0.9, POSSIBLE = 0.7, PARTIAL = 0.6;
-  const state = { db: null, user: null, assets: null, canWrite: null, unavailable: false, loaded: false,
-    reports: [], groups: [], q: "", open: new Set(), confirm: null };
+  const MAX_UPLOAD = 10 * 1024 * 1024, MAX_SHOTS = 6;
+  const state = { cfg: null, failed: false, loaded: false, reports: [], groups: [], q: "", open: new Set() };
 
   // ---- name matching (mirrors tools/registry.py)
   const SYM = { "@": "a", "$": "s", "!": "i", "|": "i", "€": "e" };
@@ -305,7 +315,7 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
   }
 
   // ---- data shaping
-  const when = (r) => r.matchDate || String(r.createdAt || "").slice(0, 10);
+  const when = (r) => r.match_date || String(r.created_at || "").slice(0, 10);
   const list = (v) => Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : [];
   function groupReports(reports) {
     const parent = new Map();
@@ -323,13 +333,12 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
     }
     const groups = [];
     for (const [id, rs] of buckets) {
-      rs.sort((a, b) => (when(b) + (b.createdAt || "")).localeCompare(when(a) + (a.createdAt || "")));
+      rs.sort((a, b) => (when(b) + (b.created_at || "")).localeCompare(when(a) + (a.created_at || "")));
       const names = [];
       for (const r of rs) for (const n of [r.team, ...list(r.aka)]) if (n && !names.some((x) => key(x) === key(n))) names.push(n);
       const cheats = new Map();
       for (const r of rs) for (const c of list(r.cheats)) cheats.set(c, (cheats.get(c) || 0) + 1);
-      const players = [...new Set(rs.flatMap((r) => list(r.players)))];
-      groups.push({ id, name: rs[0].team, names, reports: rs, cheats: [...cheats].sort((a, b) => b[1] - a[1]), players, last: when(rs[0]), first: when(rs[rs.length - 1]) });
+      groups.push({ id, name: rs[0].team, names, reports: rs, cheats: [...cheats].sort((a, b) => b[1] - a[1]), last: when(rs[0]) });
     }
     return groups.sort((a, b) => b.last.localeCompare(a.last));
   }
@@ -350,6 +359,55 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
     return hits.sort((a, b) => b.s - a.s);
   }
 
+  // ---- supabase
+  function headers(extra) {
+    const k = state.cfg.supabaseKey;
+    const h = { apikey: k, ...extra };
+    if (k.startsWith("eyJ")) h.Authorization = `Bearer ${k}`;
+    return h;
+  }
+  const api = (path) => state.cfg.supabaseUrl.replace(/\/$/, "") + path;
+  const shotUrl = (name) => api(`/storage/v1/object/public/screenshots/${encodeURIComponent(name)}`);
+  async function loadReports() {
+    const res = await fetch(api("/rest/v1/reports?select=*&order=created_at.desc&limit=1000"), { headers: headers() });
+    if (!res.ok) throw new Error(`load ${res.status}`);
+    state.reports = (await res.json()).filter((r) => typeof r.team === "string" && r.team.trim());
+    state.groups = groupReports(state.reports);
+    state.loaded = true; state.failed = false;
+  }
+  async function refresh() {
+    try { await loadReports(); } catch { if (!state.loaded) state.failed = true; }
+    render();
+    if (!$("#logForm").hidden) dupHint();
+  }
+  async function shrink(file) {
+    if (file.size <= 3 * 1024 * 1024 || !/^image\/(png|jpeg|webp)$/.test(file.type) || !window.createImageBitmap) return file;
+    try {
+      const bmp = await createImageBitmap(file);
+      const scale = Math.min(1, 2560 / bmp.width);
+      const c = document.createElement("canvas");
+      c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+      const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.85));
+      return blob && blob.size < file.size ? new File([blob], "shot.jpg", { type: "image/jpeg" }) : file;
+    } catch { return file; }
+  }
+  async function uploadShot(file) {
+    const ext = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" }[file.type];
+    if (!ext) throw Object.assign(new Error("type"), { why: "Screenshots need to be PNG, JPG, WebP or GIF." });
+    if (file.size > MAX_UPLOAD) throw Object.assign(new Error("size"), { why: "One screenshot is over 10 MB. Crop it or save it as JPG and try again." });
+    const rand = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => b.toString(16).padStart(2, "0")).join("");
+    const name = `${todayISO()}-${rand}.${ext}`;
+    const res = await fetch(api(`/storage/v1/object/screenshots/${name}`), { method: "POST", headers: headers({ "Content-Type": file.type, "x-upsert": "false" }), body: file });
+    if (!res.ok) throw Object.assign(new Error(`upload ${res.status}`), { why: "A screenshot didn't upload. Check your connection and try again." });
+    return name;
+  }
+  async function insertReport(doc) {
+    const res = await fetch(api("/rest/v1/reports"), { method: "POST", headers: headers({ "Content-Type": "application/json", Prefer: "return=representation" }), body: JSON.stringify(doc) });
+    if (!res.ok) throw Object.assign(new Error(`insert ${res.status}`), { why: res.status === 400 ? "Something in the form is too long. Shorten the notes or names and try again." : "Couldn't save the report. Check your connection and try again." });
+    return (await res.json())[0];
+  }
+
   // ---- formatting
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   function fmtDate(d) {
@@ -360,6 +418,7 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
   const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
   const todayISO = () => new Date().toLocaleDateString("en-CA");
   const splitList = (s) => [...new Set(String(s || "").split(",").map((x) => x.trim()).filter(Boolean))];
+  const store = { get(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 
   // ---- rendering
   function teamHTML(g, hit) {
@@ -389,34 +448,26 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
     const bits = [`<time class="mono" datetime="${esc(when(r))}">${esc(fmtDate(when(r)))}</time>`];
     if (r.score) bits.push(`<span class="mono ft">FT ${esc(r.score)}</span>`);
     if (r.platform) bits.push(`<span>${esc(r.platform)}</span>`);
-    const shots = list(r.screenshots).filter((id) => /^[A-Za-z0-9_-]{8,64}$/.test(id));
-    const by = r.reporterId ? `<span data-uid="${esc(r.reporterId)}">Logged by a club mate</span>`
-      : `<span>${r.source === "claude" ? "Logged via Claude" : "Logged"}</span>`;
-    const canRemove = state.db && state.canWrite !== false;
-    const rm = !canRemove ? "" : state.confirm === r._id
-      ? `<span class="confirm">Remove this report? <button type="button" class="linkbtn danger" data-rm-yes="${esc(r._id)}">Remove</button><button type="button" class="linkbtn" data-rm-no>Keep</button></span>`
-      : `<button type="button" class="linkbtn danger" data-rm="${esc(r._id)}">Remove</button>`;
+    const shots = list(r.screenshots).filter((n) => /^[\w.-]{1,100}$/.test(n));
+    const by = r.reporter ? `Logged by ${esc(r.reporter)}` : r.source === "claude" ? "Logged via Claude" : "Logged";
     return `<li class="report">
       <div class="report-line">${bits.join("")}</div>
       ${list(r.cheats).length ? `<div class="tags">${list(r.cheats).map((c) => `<span class="tag">${esc(c)}</span>`).join("")}</div>` : ""}
       ${key(r.team) !== key(g.name) ? `<p><span class="k">Played as</span>${esc(r.team)}</p>` : ""}
       ${list(r.players).length ? `<p><span class="k">Gamertags</span>${esc(list(r.players).join(", "))}</p>` : ""}
       ${r.notes ? `<p class="notes">${esc(r.notes)}</p>` : ""}
-      ${shots.length ? `<div class="shots">${shots.map((id, i) => `<button type="button" class="shot" data-shot="${esc(id)}" aria-label="Open screenshot ${i + 1}"><img src="/_blob/${esc(id)}" alt="Screenshot ${i + 1} of ${esc(r.team)}" loading="lazy"></button>`).join("")}</div>` : ""}
-      <div class="report-foot">${by}${rm}</div>
+      ${shots.length ? `<div class="shots">${shots.map((n, i) => `<button type="button" class="shot" data-shot="${esc(n)}" aria-label="Open screenshot ${i + 1}"><img src="${esc(shotUrl(n))}" alt="Screenshot ${i + 1} of ${esc(r.team)}" loading="lazy"></button>`).join("")}</div>` : ""}
+      <p class="report-foot">${by}</p>
     </li>`;
   }
   function render() {
     const { groups, reports } = state;
     $("#tally").innerHTML = state.loaded ? `<b>${groups.length}</b> ${groups.length === 1 ? "club" : "clubs"} · <b>${reports.length}</b> ${reports.length === 1 ? "report" : "reports"}` : "";
-    const writable = !!state.db && state.canWrite !== false;
-    $("#openLog").hidden = !writable || !$("#logForm").hidden;
-    $("#readonly").hidden = !(state.db && state.canWrite === false);
-
+    $("#openLog").hidden = !$("#logForm").hidden;
     const listEl = $("#list"), verdict = $("#verdict");
-    if (state.unavailable) {
+    if (state.failed) {
       verdict.innerHTML = "";
-      listEl.innerHTML = `<div class="empty"><h3>The shared log isn't available here</h3><p>Open this page on claude.ai while signed in, using the link it was shared with, to check and log clubs.</p></div>`;
+      listEl.innerHTML = `<div class="empty"><h3>Couldn't load the log</h3><p>Check your connection and try again. If it keeps failing, the database may be paused; whoever runs the page can restore it from Supabase.</p><button type="button" class="btn btn-primary" data-retry>Try again</button></div>`;
       return;
     }
     if (!state.loaded) return;
@@ -424,27 +475,20 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
     if (!hits) {
       verdict.innerHTML = "";
       listEl.innerHTML = groups.length ? groups.map((g) => teamHTML(g)).join("")
-        : `<div class="empty"><h3>No cheaters logged yet</h3><p>When a club lag-switches, boots you offline or plays with modded players, log them here so the rest of the squad knows before kick-off.</p>${writable ? `<button type="button" class="btn btn-primary" data-log="">Log the first one</button>` : ""}</div>`;
-    } else {
-      const strong = hits.filter((h) => h.s >= STRONG);
-      const q = esc(state.q.trim());
-      if (strong.length) {
-        const n = strong.reduce((t, h) => t + h.g.reports.length, 0);
-        verdict.innerHTML = `<span class="pill pill-red">On the log</span><p>${plural(n, "report")} for “${esc(strong[0].g.name)}”${strong.length > 1 ? ` and ${strong.length - 1} more` : ""}. Open it below for the evidence.</p>`;
-      } else if (hits.length) {
-        verdict.innerHTML = `<span class="pill pill-yellow">Close match</span><p>“${q}” isn't logged by that exact name, but ${hits.length === 1 ? "this club is" : "these clubs are"} close. Could be a rename or a typo.</p>`;
-      } else {
-        verdict.innerHTML = `<span class="pill pill-clean">Not on the log</span><p>No reports for “${q}”.</p>${writable ? `<button type="button" class="linkbtn" data-log="${q}">Log them</button>` : ""}`;
-      }
-      listEl.innerHTML = hits.map((h) => teamHTML(h.g, h)).join("") || "";
+        : `<div class="empty"><h3>No cheaters logged yet</h3><p>When a club runs slider hacks, modded players or glitches, log them here so the rest of the squad knows before kick-off.</p><button type="button" class="btn btn-primary" data-log="">Log the first one</button></div>`;
+      return;
     }
-    fillNames();
-  }
-  async function fillNames() {
-    const els = [...document.querySelectorAll("[data-uid]")];
-    if (!state.user || !els.length) return;
-    const ps = await state.user.profiles([...new Set(els.map((e) => e.dataset.uid))]);
-    for (const el of els) { const p = ps[el.dataset.uid]; if (p && p.name) el.textContent = `Logged by ${p.name}`; }
+    const strong = hits.filter((h) => h.s >= STRONG);
+    const q = esc(state.q.trim());
+    if (strong.length) {
+      const n = strong.reduce((t, h) => t + h.g.reports.length, 0);
+      verdict.innerHTML = `<span class="pill pill-red">On the log</span><p>${plural(n, "report")} for “${esc(strong[0].g.name)}”${strong.length > 1 ? ` and ${strong.length - 1} more` : ""}. Open it below for the evidence.</p>`;
+    } else if (hits.length) {
+      verdict.innerHTML = `<span class="pill pill-yellow">Close match</span><p>“${q}” isn't logged by that exact name, but ${hits.length === 1 ? "this club is" : "these clubs are"} close. Could be a rename or a typo.</p>`;
+    } else {
+      verdict.innerHTML = `<span class="pill pill-clean">Not on the log</span><p>No reports for “${q}”.</p><button type="button" class="linkbtn" data-log>Log them</button>`;
+    }
+    listEl.innerHTML = hits.map((h) => teamHTML(h.g, h)).join("");
   }
 
   // ---- toast & lightbox
@@ -454,14 +498,14 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
     t.textContent = msg; t.hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
   }
-  function openShot(id) { $("#lbImg").src = `/_blob/${id}`; $("#lightbox").hidden = false; $("#lbClose").focus(); }
+  function openShot(name) { $("#lbImg").src = shotUrl(name); $("#lightbox").hidden = false; $("#lbClose").focus(); }
   function closeShot() { $("#lightbox").hidden = true; $("#lbImg").removeAttribute("src"); }
   $("#lbClose").addEventListener("click", closeShot);
   $("#lightbox").addEventListener("click", (e) => { if (e.target.id === "lightbox") closeShot(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#lightbox").hidden) closeShot(); });
 
   // ---- list interactions
-  $("#list").addEventListener("click", async (e) => {
+  $("#list").addEventListener("click", (e) => {
     const head = e.target.closest(".team-head");
     if (head) {
       const id = head.dataset.g;
@@ -472,46 +516,24 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
     }
     const shot = e.target.closest("[data-shot]");
     if (shot) return openShot(shot.dataset.shot);
-    const rm = e.target.closest("[data-rm]");
-    if (rm) { state.confirm = rm.dataset.rm; return render(); }
-    if (e.target.closest("[data-rm-no]")) { state.confirm = null; return render(); }
-    const yes = e.target.closest("[data-rm-yes]");
-    if (yes) return removeReport(yes.dataset.rmYes);
-    const log = e.target.closest("[data-log]");
-    if (log) openForm(log.dataset.log);
+    if (e.target.closest("[data-retry]")) return refresh();
+    if (e.target.closest("[data-log]")) openForm("");
   });
-  $("#verdict").addEventListener("click", (e) => {
-    const log = e.target.closest("[data-log]");
-    if (log) openForm(state.q.trim());
-  });
-  async function removeReport(id) {
-    const r = state.reports.find((x) => x._id === id);
-    state.confirm = null;
-    try {
-      await state.db.collection("reports").doc(id).delete();
-      toast("Report removed");
-      if (state.assets && r) for (const s of list(r.screenshots)) state.assets.delete(s).catch(() => {});
-    } catch (err) {
-      toast(err && err.code === "invalid_argument" ? "You don't have permission to remove reports." : "Couldn't remove the report. Try again.");
-      render();
-    }
-  }
-
-  // ---- search
+  $("#verdict").addEventListener("click", (e) => { if (e.target.closest("[data-log]")) openForm(state.q.trim()); });
   $("#q").addEventListener("input", (e) => { state.q = e.target.value; render(); });
 
   // ---- log form
   $("#fCheats").innerHTML = CHEATS.map((c, i) => `<label class="pick"><input type="checkbox" id="fCheat${i}" value="${esc(c)}"><span>${esc(c)}</span></label>`).join("");
+  $("#fReporter").value = store.get("cc-reporter");
   function openForm(team) {
-    const f = $("#logForm");
-    f.hidden = false;
+    $("#logForm").hidden = false;
     if (!$("#fDate").value) $("#fDate").value = todayISO();
     if (team) $("#fTeam").value = team;
     dupHint();
     render();
     (team ? $("#fCheat0") : $("#fTeam")).focus();
   }
-  function closeForm() { $("#logForm").hidden = true; $("#formError").hidden = true; render(); }
+  function closeForm() { $("#logForm").hidden = true; formError(""); render(); }
   $("#openLog").addEventListener("click", () => openForm(state.q.trim()));
   $("#closeLog").addEventListener("click", closeForm);
   function dupHint() {
@@ -526,53 +548,44 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
   }
   $("#fTeam").addEventListener("input", dupHint);
   function formError(msg) { const el = $("#formError"); el.textContent = msg; el.hidden = !msg; }
-  const UPLOAD_ERRORS = {
-    too_large: "That screenshot is over 20 MB. Crop it or save it as JPG and try again.",
-    unsupported_type: "Screenshots need to be PNG, JPG, WebP or GIF.",
-    rate_limited: "Too many uploads in a row. Wait a minute, then try again.",
-    quota_or_state: "Screenshot storage for this log is full. Remove old reports with screenshots, or log this one without.",
-  };
   $("#logForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     formError("");
+    if ($("#fWebsite").value) { closeForm(); return; }  // bot filled the hidden field
     const team = $("#fTeam").value.trim();
     if (!key(team)) { formError("Enter the club name as it appears in game."); return $("#fTeam").focus(); }
     const cheats = [...document.querySelectorAll("#fCheats input:checked")].map((i) => i.value);
     if (!cheats.length) { formError("Pick at least one thing they did. Use Other and add notes if none fit."); return $("#fCheat0").focus(); }
+    const files = [...$("#fShots").files];
+    if (files.length > MAX_SHOTS) { formError(`Attach up to ${MAX_SHOTS} screenshots.`); return $("#fShots").focus(); }
+    const reporter = $("#fReporter").value.trim();
+    store.set("cc-reporter", reporter);
     const btn = $("#submitBtn");
-    btn.disabled = true; btn.textContent = "Logging…";
-    const files = state.assets ? [...$("#fShots").files] : [];
-    const uploaded = [];
+    btn.disabled = true;
     try {
+      const shots = [];
       for (const [i, f] of files.entries()) {
         btn.textContent = `Uploading ${i + 1} of ${files.length}…`;
-        uploaded.push((await state.assets.upload(f)).id);
+        shots.push(await uploadShot(await shrink(f)));
       }
-      const now = new Date();
-      const id = "r" + now.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "") + "-" + Math.random().toString(16).slice(2, 6).padEnd(4, "0");
-      const doc = {
-        team, teamKey: key(team),
-        aka: splitList($("#fAka").value).filter((a) => key(a) && key(a) !== key(team)),
-        cheats, players: splitList($("#fPlayers").value),
+      btn.textContent = "Logging…";
+      await insertReport({
+        team, team_key: key(team),
+        aka: splitList($("#fAka").value).filter((a) => key(a) && key(a) !== key(team)).slice(0, 10),
+        cheats, players: splitList($("#fPlayers").value).slice(0, 20),
         platform: $("#fPlatform").value, score: $("#fScore").value.trim(),
-        matchDate: $("#fDate").value || todayISO(), notes: $("#fNotes").value.trim(),
-        screenshots: uploaded, createdAt: now.toISOString().replace(/\.\d+Z$/, "Z"), source: "page",
-      };
-      const uid = state.user ? await state.user.id() : null;
-      if (uid) doc.reporterId = uid;
-      await state.db.collection("reports").doc(id).set(doc);
+        match_date: $("#fDate").value || todayISO(), notes: $("#fNotes").value.trim(),
+        screenshots: shots, reporter, source: "page",
+      });
       $("#logForm").reset();
+      $("#fReporter").value = reporter;
       $("#dupHint").hidden = true;
       $("#logForm").hidden = true;
       state.q = team; $("#q").value = team;
       toast(`Logged ${team}`);
-      render();
+      await refresh();
     } catch (err) {
-      const code = err && err.code;
-      if (state.assets) for (const s of uploaded) state.assets.delete(s).catch(() => {});
-      if (code === "invalid_argument" && !files.length) { state.canWrite = false; formError("You can view this log but not add to it. Ask whoever shared it to invite you as an Editor."); render(); }
-      else if (code === "quota_exceeded") formError("The log has hit its storage limit. Remove some old reports, then try again.");
-      else formError(UPLOAD_ERRORS[code] || "Couldn't save the report. Check your connection and try again.");
+      formError(err.why || "Couldn't save the report. Check your connection and try again.");
     } finally {
       btn.disabled = false; btn.textContent = "Log cheater";
     }
@@ -580,23 +593,16 @@ h1 { font-weight: 800; font-size: clamp(2rem, 8vw, 2.6rem); line-height: .95; le
 
   // ---- boot
   async function boot() {
-    if (!window.claude || typeof window.claude.use !== "function") { state.unavailable = true; return render(); }
-    const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
-    state.db = db; state.user = user;
-    if (!db) { state.unavailable = true; return render(); }
-    state.canWrite = user ? await user.can("data.write") : null;
-    render();
-    window.claude.use("assets").then((a) => { state.assets = a; $("#shotField").hidden = !a; });
-    db.collection("reports").onSnapshot((snap) => {
-      state.reports = snap.docs.filter((d) => d.exists).map((d) => ({ ...d.data(), _id: d.id })).filter((r) => typeof r.team === "string" && r.team.trim());
-      state.groups = groupReports(state.reports);
-      state.loaded = true;
-      render();
-      if (!$("#logForm").hidden) dupHint();
-    }, () => {
-      state.unavailable = true; render();
-    });
+    try {
+      state.cfg = await (await fetch("config.json", { cache: "no-store" })).json();
+      if (!state.cfg.supabaseUrl || !state.cfg.supabaseKey) throw new Error("config");
+    } catch { state.failed = true; return render(); }
+    await refresh();
+    setInterval(() => { if (document.visibilityState === "visible") refresh(); }, 60000);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
   }
   boot();
 })();
 </script>
+</body>
+</html>

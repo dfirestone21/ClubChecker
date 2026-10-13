@@ -1,4 +1,6 @@
 {
-  "registryUrl": "https://claude.ai/artifact/FkkmAnUkc8qmGtdZa1pk7f",
+  "pageUrl": "https://dfirestone21.github.io/ClubChecker/",
+  "supabaseUrl": "https://gpwgbuikjdykgpvkndoq.supabase.co",
+  "supabaseKey": "sb_publishable_mCwKWZXzaHf9C4AZEQ4RtQ_dFkWlKF5",
   "ownClubs": ["US Canada", "aless get in"]
 }
