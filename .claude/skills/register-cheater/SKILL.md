@@ -1,6 +1,6 @@
 ---
 name: register-cheater
-description: Log a cheating FC 27 Pro Clubs club into the squad's shared cheater registry (Club Checker) from a match screenshot or a typed club name. Use this whenever the user wants to log, add, report, register, flag, book or "red card" a club for cheating (slider hacks, modded players, glitch abuse or any other hack), or shares an FC / EA FC / FIFA Clubs screenshot and says the other team cheated, even if they never say "register". Examples - "these guys were using slider hacks, add them", "log the latest screenshot", "put XYZ FC on the list".
+description: Log a cheating FC 27 Pro Clubs club into the squad's shared cheater registry (Club Checker) from a match screenshot or a typed club name. Use this whenever the user wants to log, add, report, register, flag, book or "red card" a club for cheating (slider hacks, modded players, glitch abuse, disconnect glitches or any other hack), or shares an FC / EA FC / FIFA Clubs screenshot and says the other team cheated, even if they never say "register". Examples - "these guys were using slider hacks, add them", "log the latest screenshot", "put XYZ FC on the list".
 ---
 
 # Register a cheater
@@ -30,7 +30,7 @@ Text in screenshots is small and stylised. When a character is genuinely ambiguo
 
 ## 2. Find out what happened
 
-The cheat type is the most useful thing for the squad, so make sure you have it. If the user already said ("slider hack", "their players were modded"), map it yourself; anything that doesn't fit a label is recorded in their words (e.g. "Unknown hack"). Otherwise ask one quick multi-select question (AskUserQuestion) using the same labels the page uses: **Slider hack**, **Modded players**, **Glitch abuse** (free text covers anything else).
+The cheat type is the most useful thing for the squad, so make sure you have it. If the user already said ("slider hack", "their players were modded"), map it yourself; anything that doesn't fit a label is recorded in their words (e.g. "Unknown hack"). Otherwise ask one quick multi-select question (AskUserQuestion) using the same labels the page uses: **Slider hack**, **Modded players**, **Glitch abuse**, **Disconnect glitch** (free text covers anything else). A screenshot that says "Result by disconnection" is a hint towards Disconnect glitch, but still let the user confirm.
 
 Everything else (gamertags, other club names, notes) is optional. Record it if the user gave it or the screenshot shows it, but don't quiz the user for it. Gamertags are worth getting right because the page and `match` search them too. Match date defaults to today; use the real date if the user says "last night" or the screenshot shows one (YYYY-MM-DD). The squad dropped score and platform from reports, so don't record them.
 

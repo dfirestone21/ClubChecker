@@ -37,7 +37,7 @@ CONTENT_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg
 MAX_UPLOAD = 10 * 1024 * 1024  # matches the bucket limit in supabase/setup.sql
 
 # Canonical cheat labels, shared with the web page's chips.
-CHEATS = ["Slider hack", "Modded players", "Glitch abuse", "Other"]
+CHEATS = ["Slider hack", "Modded players", "Glitch abuse", "Disconnect glitch", "Other"]
 CHEAT_ALIASES = {
     "slider": "Slider hack", "sliders": "Slider hack", "sliderhack": "Slider hack",
     "sliderhacks": "Slider hack", "sliderhacking": "Slider hack", "sliderhacker": "Slider hack",
@@ -46,6 +46,9 @@ CHEAT_ALIASES = {
     "hacker": "Modded players", "moddedplayers": "Modded players",
     "glitch": "Glitch abuse", "glitches": "Glitch abuse", "exploit": "Glitch abuse",
     "exploits": "Glitch abuse", "glitchabuse": "Glitch abuse",
+    "disconnect": "Disconnect glitch", "disconnected": "Disconnect glitch", "disconnection": "Disconnect glitch",
+    "disconnecting": "Disconnect glitch", "disconnectglitch": "Disconnect glitch", "dc": "Disconnect glitch",
+    "dcglitch": "Disconnect glitch", "dced": "Disconnect glitch",
     "other": "Other",
 }
 
